@@ -1,0 +1,101 @@
+# Nouveau code à ajouter après la ligne 577 dans admin.py
+
+# --- NOUVELLES ROUTES ADMIN POUR CONTRÔLE DES TERRAINS ---
+
+@admin_bp.route("/courts/<int:court_id>/toggle-status", methods=["POST"])
+def toggle_court_status(court_id):
+    """Basculer manuellement l'état de disponibilité d'un terrain (admin uniquement)"""
+    if not require_super_admin(): 
+        return jsonify({"error": "Accès non autorisé"}), 403
+    
+    court = Court.query.get_or_404(court_id)
+    
+    try:
+        # Inverser l'état is_recording
+        court.is_recording = not court.is_recording
+        db.session.commit()
+        
+        status_text = "Indisponible" if court.is_recording else "Disponible"
+        
+        logger.info(f"Admin: Terrain {court.id} ({court.name}) -> {status_text}")
+       
+        return jsonify({
+            "message": f"Statut du terrain modifié: {status_text}",
+            "court": court.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur lors de la modification du statut du terrain: {e}")
+        return jsonify({"error": "Erreur lors de la modification"}), 500
+
+
+@admin_bp.route("/recordings/<recording_id>/stop", methods=["POST"])
+def admin_stop_recording(recording_id):
+    """Arrêter un enregistrement en cours (admin uniquement)"""
+    if not require_super_admin():
+        return jsonify({"error": "Accès non autorisé"}), 403
+    
+    try:
+        # Importer les fonctions nécessaires
+        from src.routes.recording import _stop_recording_session
+        
+        # Récupérer la session d'enregistrement
+        recording_session = RecordingSession.query.filter_by(
+            recording_id=recording_id,
+            status='active'
+        ).first()
+        
+        if not recording_session:
+            return jsonify({"error": "Session d'enregistrement non trouvée ou déjà terminée"}), 404
+        
+        # Arrêter l'enregistrement (comme le ferait un club)
+        return _stop_recording_session(recording_session, 'admin', session.get('user_id'))
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erreur lors de l'arrêt d'enregistrement par admin: {e}")
+        return jsonify({"error": "Erreur lors de l'arrêt"}), 500
+
+
+@admin_bp.route("/recordings/active", methods=["GET"])
+def get_all_active_recordings():
+    """Récupérer tous les enregistrements actifs de tous les clubs (admin uniquement)"""
+    if not require_super_admin():
+        return jsonify({"error": "Accès non autorisé"}), 403
+    
+    try:
+        # Récupérer toutes les sessions actives
+        active_sessions = RecordingSession.query.filter_by(status='active').all()
+        
+        recordings_data = []
+        for session in active_sessions:
+            session_data = session.to_dict()
+            
+            # Ajouter les infos utilisateur
+            player = User.query.get(session.user_id)
+            if player:
+                session_data['player'] = {
+                    'id': player.id,
+                    'name': player.name,
+                    'email': player.email
+                }
+            
+            # Ajouter les infos terrain et club
+            court = Court.query.get(session.court_id)
+            if court:
+                session_data['court'] = court.to_dict()
+                club = Club.query.get(court.club_id)
+                if club:
+                    session_data['club'] = club.to_dict()
+            
+            recordings_data.append(session_data)
+        
+        return jsonify({
+            'active_recordings': recordings_data,
+            'count': len(recordings_data)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des enregistrements actifs: {e}")
+        return jsonify({"error": "Erreur serveur"}), 500

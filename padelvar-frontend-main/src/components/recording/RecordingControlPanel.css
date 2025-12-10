@@ -1,0 +1,232 @@
+/* Styles pour le composant RecordingControlPanel */
+
+.recording-control-panel {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.recording-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.recording-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ff4757;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: pulse 2s infinite;
+}
+
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  background-color: white;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 71, 87, 0);
+  }
+}
+
+.recording-text {
+  font-size: 12px;
+}
+
+.error-message {
+  background-color: #ffe5e5;
+  border-left: 4px solid #ff4757;
+  color: #d63031;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.error-message p {
+  margin: 0;
+}
+
+.recording-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #2196f3;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #1976d2;
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-danger {
+  background-color: #ff4757;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #ff3838;
+  box-shadow: 0 4px 8px rgba(255, 71, 87, 0.3);
+}
+
+.btn-start-recording {
+  width: 100%;
+}
+
+.recording-active {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+}
+
+.duration-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(255, 71, 87, 0.1);
+  padding: 10px 16px;
+  border-radius: 6px;
+  flex: 1;
+}
+
+.duration-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.duration-value {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff4757;
+}
+
+.btn-stop-recording {
+  flex: 1;
+}
+
+.recording-status {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  padding: 15px;
+  border-left: 4px solid #2196f3;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+}
+
+.status-item:last-child {
+  border-bottom: none;
+}
+
+.status-label {
+  font-weight: 600;
+  color: #555;
+}
+
+.status-value {
+  color: #333;
+  word-break: break-all;
+  text-align: right;
+  flex: 1;
+  margin-left: 10px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .recording-control-panel {
+    padding: 15px;
+  }
+
+  .recording-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .recording-header h3 {
+    font-size: 16px;
+  }
+
+  .recording-active {
+    flex-direction: column;
+  }
+
+  .duration-display {
+    width: 100%;
+  }
+
+  .btn-stop-recording {
+    width: 100%;
+  }
+
+  .status-item {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .status-value {
+    text-align: left;
+    margin-left: 0;
+  }
+}
