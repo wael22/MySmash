@@ -45,6 +45,10 @@ const LoginForm = () => {
           navigate('/dashboard');
           break;
       }
+    } else if (result.error && result.error.redirect_to_super_admin) {
+      // Super admin detectedé - rediriger vers la page de connexion dédiée
+      // Note: Ne pas rediriger automatiquement pour des raisons de sécurité
+      // L'utilisateur doit connaître l'URL
     }
 
     setIsLoading(false);
@@ -140,12 +144,6 @@ const LoginForm = () => {
               >
                 S'inscrire
               </Link>
-            </p>
-          </div>
-
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">
-              Compte de test : admin@mysmash.com / admin123
             </p>
           </div>
 

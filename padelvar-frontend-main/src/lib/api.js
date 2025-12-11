@@ -47,8 +47,12 @@ api.interceptors.response.use(
 
     // Ne rediriger vers login QUE pour les vraies erreurs 401 (non authentifié)
     // PAS pour les erreurs 500 (erreurs serveur)
+    // ET PAS pour les pages publiques comme /super-secret-login ou /register
     if (error.response?.status === 401) {
-      if (!isRedirecting && window.location.pathname !== '/login') {
+      const publicRoutes = ['/login', '/register', '/super-secret-login', '/forgot-password', '/reset-password'];
+      const isPublicRoute = publicRoutes.some(route => window.location.pathname.startsWith(route));
+
+      if (!isRedirecting && !isPublicRoute) {
         isRedirecting = true;
         console.warn('[API] Redirection vers login - Erreur 401');
         window.location.href = '/login';
@@ -94,6 +98,11 @@ export const videoService = {
   downloadVideo: (videoId) => api.get(`/videos/download/${videoId}`, { responseType: 'blob' }),
   // New endpoint for player court access
   getClubCourtsForPlayers: (clubId) => api.get(`/recording/v3/clubs/${clubId}/courts?_t=${Date.now()}`),
+  // New video sharing endpoints
+  shareVideoWithUser: (videoId, recipientEmail, message) => api.post(`/videos/${videoId}/share-with-user`, { recipient_email: recipientEmail, message }),
+  getSharedWithMe: () => api.get('/videos/shared-with-me'),
+  removeSharedAccess: (sharedVideoId) => api.delete(`/videos/shared/${sharedVideoId}`),
+  getMySharedVideos: () => api.get('/videos/my-shared-videos'),
 };
 
 export const recordingService = {

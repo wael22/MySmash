@@ -3,6 +3,7 @@ import { AuthProvider } from './hooks/useAuth.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
+import SuperAdminLogin from './components/auth/SuperAdminLogin';  // 🆕 Connexion Super Admin
 import PlayerDashboard from './components/player/PlayerDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ClubDashboard from './components/club/ClubDashboard';
@@ -27,6 +28,7 @@ function App() {
           <Routes>
             {/* Routes publiques */}
             <Route path="/login" element={<LoginForm />} />
+            <Route path="/super-secret-login" element={<SuperAdminLogin />} />  {/* 🆕 Login Super Admin */}
             <Route path="/register" element={<RegisterForm />} />
             <Route path="/google-auth-callback" element={<GoogleAuthCallback />} />
             <Route path="/forgot-password" element={
@@ -43,35 +45,35 @@ function App() {
                 </Suspense>
               </ErrorBoundary>
             } />
-            
+
             {/* Routes protégées */}
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 <ProtectedRoute requiredRole="player">
                   <PlayerDashboard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            <Route 
-              path="/admin" 
+
+            <Route
+              path="/admin"
               element={
                 <ProtectedRoute requiredRole="super_admin">
                   <AdminDashboard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
-            <Route 
-              path="/club" 
+
+            <Route
+              path="/club"
               element={
                 <ProtectedRoute requiredRole="club">
                   <ClubDashboard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
+
             {/* Page profil protégée */}
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 

@@ -71,6 +71,14 @@ def login():
         email = data['email'].lower().strip()
         password = data['password']
         user = User.query.filter_by(email=email).first()
+        
+        # Vérifier si c'est un super admin - rediriger vers l'endpoint dédié
+        if user and user.role == UserRole.SUPER_ADMIN:
+            return jsonify({
+                'error': 'Les super administrateurs doivent utiliser la page de connexion dédiée.',
+                'redirect_to_super_admin': True
+            }), 403
+        
         if not user or not user.password_hash or not check_password_hash(user.password_hash, password):
             return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
         session.permanent = True

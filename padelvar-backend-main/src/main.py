@@ -13,6 +13,7 @@ from .config import DevelopmentConfig, ProductionConfig, Config
 from .models.database import db
 from .models.user import User, UserRole
 from .routes.auth import auth_bp
+from .routes.super_admin_auth import super_admin_auth_bp  # 🆕 Authentification super admin avec 2FA
 from .routes.admin import admin_bp
 from .routes.videos import videos_bp  # Réactivé pour les vidéos
 from .routes.clubs import clubs_bp
@@ -40,6 +41,7 @@ from .routes.diagnostic import diagnostic_bp
 from .routes.highlights import highlights_bp  # 🆕 Highlights generation
 from .routes.support import support_bp  # 🆕 Support messages
 from .routes.notifications import notifications_bp  # 🆕 Notifications system
+from .routes.video_sharing_routes import video_sharing_bp  # 🆕 Video sharing between users
 
 def create_app(config_name=None):
     """
@@ -94,6 +96,7 @@ def create_app(config_name=None):
     
     # Enregistrement des blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(super_admin_auth_bp, url_prefix='/api/auth/super-admin')  # 🆕 Auth super admin
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(videos_bp, url_prefix='/api/videos')  # Réactivé pour les vidéos
     app.register_blueprint(clubs_bp, url_prefix='/api/clubs')
@@ -110,6 +113,7 @@ def create_app(config_name=None):
     # app.register_blueprint(payment_bp, url_prefix='/api/payment')  # Temporarily disabled
     app.register_blueprint(system_bp, url_prefix='/api/system')
     app.register_blueprint(highlights_bp)  # 🆕 Highlights (prefix in blueprint)
+    app.register_blueprint(video_sharing_bp, url_prefix='/api/videos')  # 🆕 Video sharing
     app.register_blueprint(password_reset_bp)
     # Frontend blueprint en dernier pour éviter d'intercepter les routes API
     app.register_blueprint(frontend_bp)

@@ -61,6 +61,11 @@ class User(db.Model):
     email_verified_at = db.Column(db.DateTime, nullable=True)
     google_id = db.Column(db.String(100), nullable=True, unique=True)  # ID Google pour l'authentification
     
+    # Champs pour l'authentification à deux facteurs (2FA)
+    two_factor_secret = db.Column(db.String(255), nullable=True)  # Secret TOTP chiffré
+    two_factor_enabled = db.Column(db.Boolean, default=False)  # Si 2FA est activé
+    two_factor_backup_codes = db.Column(db.Text, nullable=True)  # Codes de secours (JSON)
+    
     videos = db.relationship('Video', backref='owner', lazy=True, cascade='all, delete-orphan')
     club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=True)
     
@@ -507,6 +512,44 @@ class IdempotencyKey(db.Model):
     def is_expired(self):
         """Vérifier si la clé d'idempotence a expiré"""
         return datetime.utcnow() > self.expires_at
+
+class SharedVideo(db.Model):
+    """Modèle pour gérer le partage de vidéos entre utilisateurs"""
+    __tablename__ = 'shared_videos'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Relations
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    shared_with_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Métadonnées
+    shared_at = db.Column(db.DateTime, default=datetime.utcnow)
+    message = db.Column(db.Text, nullable=True)  # Message optionnel du partageur
+    
+    # Relations
+    video = db.relationship('Video', backref='shared_instances')
+    owner = db.relationship('User', foreign_keys=[owner_user_id], backref='videos_shared_by_me')
+    shared_with = db.relationship('User', foreign_keys=[shared_with_user_id], backref='videos_shared_with_me')
+    
+    def to_dict(self):
+        """Sérialise en dictionnaire pour l'API"""
+        return {
+            'id': self.id,
+            'video_id': self.video_id,
+            'owner_user_id': self.owner_user_id,
+            'shared_with_user_id': self.shared_with_user_id,
+            'shared_at': self.shared_at.isoformat() if self.shared_at else None,
+            'message': self.message,
+            'video': self.video.to_dict() if self.video else None,
+            'owner': {
+                'id': self.owner.id,
+                'name': self.owner.name,
+                'email': self.owner.email
+            } if self.owner else None
+        }
+
 
 # ====================================================================
 # CONFIGURATION DE LA SYNCHRONISATION BIDIRECTIONNELLE

@@ -21,11 +21,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Video, Clock, BarChart, Plus, QrCode, Loader2, Play, Share2, MoreHorizontal, Calendar, Scissors, Trash2, Coins, Timer, MessageSquare, Bell } from 'lucide-react';
 import ContactSupport from './ContactSupport';
 import NotificationsTab from './NotificationsTab';
+import ShareVideoModal from './ShareVideoModal';
 
 // ====================================================================
 // COMPOSANT VIDÉO (CORRIGÉ POUR L'AFFICHAGE DES BOUTONS)
 // ====================================================================
-const MyVideoSection = ({ onDataChange, onEditVideo }) => {
+const MyVideoSection = ({ onDataChange, onEditVideo, onShareVideo }) => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,6 +64,24 @@ const MyVideoSection = ({ onDataChange, onEditVideo }) => {
   const VideoCard = ({ video }) => {
     const formatDate = (dateString) => new Date(dateString).toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+    const handleDeleteClick = async () => {
+      if (video.is_shared) {
+        // Pour une vidéo partagée, on supprime le partage
+        if (window.confirm('Voulez-vous retirer cette vidéo partagée de votre liste ?')) {
+          try {
+            await videoService.removeSharedAccess(video.shared_video_id);
+            await loadVideos();
+            onDataChange();
+          } catch (err) {
+            setError('Erreur lors de la suppression.');
+          }
+        }
+      } else {
+        // Pour une vidéo possédée, on supprime la vidéo
+        handleDelete(video.id);
+      }
+    };
+
     return (
       <Card className="flex flex-col">
         <CardHeader className="p-0 relative">
@@ -78,16 +97,33 @@ const MyVideoSection = ({ onDataChange, onEditVideo }) => {
                 <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEditVideo(video)}><Scissors className="mr-2 h-4 w-4" /><span>Découper / Éditer</span></DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleDelete(video.id)} className="text-red-500"><Trash2 className="mr-2 h-4 w-4" /><span>Supprimer</span></DropdownMenuItem>
+                {!video.is_shared && (
+                  <>
+                    <DropdownMenuItem onClick={() => onEditVideo(video)}><Scissors className="mr-2 h-4 w-4" /><span>Découper / Éditer</span></DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={handleDeleteClick} className="text-red-500">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>{video.is_shared ? 'Retirer' : 'Supprimer'}</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </CardTitle>
+          {video.is_shared && (
+            <div className="text-sm text-blue-600 font-medium mb-1">
+              Partagé par: {video.shared_by}
+            </div>
+          )}
           <div className="text-sm text-gray-500 flex items-center">
             <Calendar className="h-4 w-4 mr-2" />
             {formatDate(video.recorded_at)}
           </div>
+          {video.is_shared && video.shared_message && (
+            <div className="text-sm bg-blue-50 p-2 rounded mt-2">
+              <p className="italic">"{video.shared_message}"</p>
+            </div>
+          )}
         </CardContent>
         {/* === CORRECTION D'AFFICHAGE ICI === */}
         <CardFooter className="flex space-x-2">
@@ -123,21 +159,15 @@ const MyVideoSection = ({ onDataChange, onEditVideo }) => {
           >
             <Play className="h-4 w-4 mr-2" />Regarder
           </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => {
-              console.log('🔗 BOUTON PARTAGER - Vidéo:', video);
-              const shareUrl = `${window.location.origin}/video/${video.id}`;
-              navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('[OK] Lien copié dans le presse-papiers !');
-              }).catch(() => {
-                alert('[ERROR] Erreur lors de la copie du lien');
-              });
-            }}
-          >
-            <Share2 className="h-4 w-4 mr-2" />Partager
-          </Button>
+          {!video.is_shared && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => onShareVideo(video)}
+            >
+              <Share2 className="h-4 w-4 mr-2" />Partager
+            </Button>
+          )}
         </CardFooter>
       </Card>
     );
@@ -188,6 +218,8 @@ const PlayerDashboard = () => {
   const [isBuyCreditsModalOpen, setIsBuyCreditsModalOpen] = useState(false);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [selectedVideoForEditor, setSelectedVideoForEditor] = useState(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedVideoToShare, setSelectedVideoToShare] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -328,7 +360,7 @@ const PlayerDashboard = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="videos" className="mt-6">
-            <MyVideoSection onDataChange={handleDataChange} onEditVideo={openEditorModal} />
+            <MyVideoSection onDataChange={handleDataChange} onEditVideo={openEditorModal} onShareVideo={(video) => { setSelectedVideoToShare(video); setIsShareModalOpen(true); }} />
           </TabsContent>
           <TabsContent value="clubs" className="mt-6">
             <ClubFollowing onFollowChange={handleDataChange} />
@@ -352,6 +384,7 @@ const PlayerDashboard = () => {
       />
       <BuyCreditsModal isOpen={isBuyCreditsModalOpen} onClose={() => setIsBuyCreditsModalOpen(false)} onCreditsUpdated={handleCreditsUpdated} />
       <VideoEditorModal isOpen={isEditorModalOpen} onClose={() => setIsEditorModalOpen(false)} video={selectedVideoForEditor} />
+      <ShareVideoModal isOpen={isShareModalOpen} onClose={() => { setIsShareModalOpen(false); setSelectedVideoToShare(null); }} video={selectedVideoToShare} />
     </div>
   );
 };

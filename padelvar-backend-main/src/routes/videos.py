@@ -40,11 +40,21 @@ def api_response(data=None, message=None, status=200, error=None):
 @videos_bp.route('/my-videos', methods=['GET'])
 @login_required
 def my_videos():
+    from src.models.user import SharedVideo
     user = get_current_user()
-    videos = (Video.query.filter_by(user_id=user.id)
-              .order_by(Video.recorded_at.desc()).all())
-    return api_response({'videos': [
-        {
+    
+    # Vidéos possédées par l'utilisateur
+    owned_videos = Video.query.filter_by(user_id=user.id).order_by(Video.recorded_at.desc()).all()
+    
+    # Vidéos partagées avec l'utilisateur
+    shared_with_me = SharedVideo.query.filter_by(shared_with_user_id=user.id).order_by(SharedVideo.shared_at.desc()).all()
+    
+    # Combiner les vidéos
+    videos_list = []
+    
+    # Ajouter les vidéos possédées
+    for v in owned_videos:
+        videos_list.append({
             'id': v.id,
             'title': v.title,
             'description': v.description,
@@ -52,9 +62,33 @@ def my_videos():
             'thumbnail_url': v.thumbnail_url,
             'duration': v.duration,
             'recorded_at': v.recorded_at.isoformat() if v.recorded_at else None,
-            'is_unlocked': v.is_unlocked
-        } for v in videos
-    ]})
+            'is_unlocked': v.is_unlocked,
+            'is_shared': False,  # C'est ma vidéo
+            'bunny_video_id': v.bunny_video_id
+        })
+    
+    # Ajouter les vidéos partagées
+    for sv in shared_with_me:
+        if sv.video:  # Vérifier que la vidéo existe toujours
+            videos_list.append({
+                'id': sv.video.id,
+                'title': sv.video.title,
+                'description': sv.video.description,
+                'file_url': sv.video.file_url,
+                'thumbnail_url': sv.video.thumbnail_url,
+                'duration': sv.video.duration,
+                'recorded_at': sv.video.recorded_at.isoformat() if sv.video.recorded_at else None,
+                'is_unlocked': sv.video.is_unlocked,
+                'is_shared': True,  # C'est une vidéo partagée
+                'shared_by': sv.owner.name if sv.owner else 'Inconnu',
+                'shared_at': sv.shared_at.isoformat() if sv.shared_at else None,
+                'shared_message': sv.message,
+                'shared_video_id': sv.id,  # Pour pouvoir supprimer le partage
+                'bunny_video_id': sv.video.bunny_video_id
+            })
+    
+    return api_response({'videos': videos_list})
+
 
 
 @videos_bp.route('/<int:video_id>', methods=['GET'])
