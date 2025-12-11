@@ -755,7 +755,11 @@ def admin_stop_recording(recording_id):
             logger.warning(f"Erreur lors de l'arrêt du service vidéo: {e}")
 
         # Créer la vidéo en base
-        video_title = active_recording.title or f"Enregistrement Admin - {court.name}"
+        # Format: "Match [jour/mois], Terrain [n°], [nom club]"
+        recorded_date = active_recording.start_time.strftime('%d/%m') if active_recording.start_time else datetime.now().strftime('%d/%m')
+        club = Club.query.get(court.club_id) if court.club_id else None
+        club_name = club.name if club else "Club"
+        video_title = active_recording.title or f"Match {recorded_date}, {court.name}, {club_name}"
         
         new_video = Video(
             title=video_title,

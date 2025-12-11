@@ -1667,7 +1667,11 @@ def stop_court_recording(court_id):
             video_file_url = None
                 
         # Créer automatiquement une vidéo pour le joueur
-        video_title = active_recording.title or f"Match du {active_recording.start_time.strftime('%d/%m/%Y')} - {court.name}"
+        # Format: "Match [jour/mois], Terrain [n°], [nom club]"
+        recorded_date = active_recording.start_time.strftime('%d/%m') if active_recording.start_time else datetime.now().strftime('%d/%m')
+        club = Club.query.get(court.club_id) if court.club_id else None
+        club_name = club.name if club else "Club"
+        video_title = active_recording.title or f"Match {recorded_date}, {court.name}, {club_name}"
         
         # Déterminer l'URL du fichier vidéo
         video_file_url = None
