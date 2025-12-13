@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
+import { videoService, getAssetUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -14,14 +15,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
-  Maximize, 
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
   Minimize,
-  SkipBack, 
+  SkipBack,
   SkipForward,
   Download,
   Share2,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export default function VideoPlayerModal({ isOpen, onClose, video }) {
+  const [overlays, setOverlays] = useState([]); // Ajout état overlays
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -55,12 +57,12 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
       console.log('🎬 URL vidéo principale:', video.url);
       console.log('🎬 Type de stream:', video.isHLS ? 'HLS' : 'Standard MP4');
       console.log('🎬 URLs de fallback:', video.fallbackUrls);
-      
+
       // Préparer toutes les URLs disponibles
       const urls = [
         { url: video.url, source: video.urlSource || 'Principal', isHLS: video.isHLS || false }
       ];
-      
+
       if (video.fallbackUrls && Array.isArray(video.fallbackUrls)) {
         video.fallbackUrls.forEach(urlInfo => {
           urls.push({
@@ -69,25 +71,46 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
           });
         });
       }
-      
+
       setAllUrls(urls);
       setCurrentUrlIndex(0);
-      
+
       console.log('🎬 Toutes les URLs préparées:', urls);
-      
+
       // Réinitialiser les états
       setHasError(false);
       setErrorMessage('');
       setIsLoading(true);
       setIsPlaying(false);
       setCurrentTime(0);
-      
+
       if (!video.url) {
         console.error('[ERROR] ERREUR: Aucune URL vidéo fournie!');
         setHasError(true);
         setErrorMessage('Aucune URL vidéo fournie');
         setIsLoading(false);
       }
+
+      // Chargement des overlays
+      const loadOverlays = async () => {
+        try {
+          console.log('🖼️ Chargement overlays pour vidéo:', video.id);
+          // Si on a l'ID vidéo, on charge les overlays
+          if (video.id) {
+            const res = await videoService.getVideoOverlays(video.id);
+            console.log('🖼️ Overlays reçus:', res.data);
+            if (res.data && res.data.overlays) {
+              setOverlays(res.data.overlays);
+            }
+          } else {
+            console.warn('⚠️ Pas d\'ID vidéo trouvé pour charger les overlays');
+          }
+        } catch (err) {
+          console.error("❌ Erreur chargement overlays:", err);
+        }
+      };
+      loadOverlays();
+
     }
   }, [isOpen, video]);
 
@@ -96,7 +119,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -107,7 +130,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen) return;
-      
+
       switch (e.code) {
         case 'Space':
           e.preventDefault();
@@ -156,7 +179,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
     const handleMouseMove = () => {
       setIsControlsVisible(true);
       clearTimeout(controlsTimeoutRef.current);
-      
+
       if (isPlaying) {
         controlsTimeoutRef.current = setTimeout(() => {
           setIsControlsVisible(false);
@@ -217,7 +240,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
 
   const skipForward = () => {
     videoRef.current.currentTime = Math.min(
-      videoRef.current.duration, 
+      videoRef.current.duration,
       videoRef.current.currentTime + 10
     );
   };
@@ -331,7 +354,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className={`max-w-6xl p-0 bg-black ${isFullscreen ? 'fixed inset-0 max-w-none' : ''}`}
         ref={containerRef}
       >
@@ -340,15 +363,15 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
             <DialogTitle className="text-white text-lg font-semibold flex items-center gap-2">
               {video.title || 'Vidéo'}
               <div className="flex gap-1">
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className="text-xs bg-white/20 text-white border-white/30"
                 >
                   {allUrls[currentUrlIndex]?.source || 'Source inconnue'}
                 </Badge>
                 {allUrls[currentUrlIndex]?.isHLS && (
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className="text-xs bg-blue-500/80 text-white border-blue-400"
                   >
                     HLS
@@ -387,7 +410,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
               console.error('[ERROR] Message erreur:', error?.message);
               console.error('[ERROR] URL vidéo problématique:', video.url);
               console.error('[ERROR] Objet vidéo complet:', video);
-              
+
               // Détecter le type d'erreur
               let errorType = 'Erreur inconnue';
               if (error) {
@@ -398,18 +421,18 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
                   case 4: errorType = 'MEDIA_ERR_SRC_NOT_SUPPORTED - Format non supporté'; break;
                 }
               }
-              
+
               // Essayer l'URL suivante si disponible
               const nextIndex = currentUrlIndex + 1;
               if (nextIndex < allUrls.length) {
                 const nextUrl = allUrls[nextIndex];
                 console.log(`🔄 Tentative URL suivante (${nextIndex + 1}/${allUrls.length}):`, nextUrl);
                 console.log(`🔄 Type: ${nextUrl.isHLS ? 'HLS' : 'MP4'}, Source: ${nextUrl.source}`);
-                
+
                 setCurrentUrlIndex(nextIndex);
                 setIsLoading(true);
                 setHasError(false);
-                
+
                 // Changer la source vidéo
                 if (videoRef.current) {
                   videoRef.current.src = nextUrl.url;
@@ -431,6 +454,25 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
             poster={video.thumbnail}
             crossOrigin="anonymous"
           />
+
+          {/* RENDU DES OVERLAYS */}
+          {!isLoading && !hasError && overlays.map(overlay => (
+            <img
+              key={overlay.id}
+              src={getAssetUrl(overlay.image_url)}
+              alt={overlay.name}
+              style={{
+                position: 'absolute',
+                left: `${overlay.position_x}%`,
+                top: `${overlay.position_y}%`,
+                width: `${overlay.width}%`,
+                opacity: overlay.opacity,
+                zIndex: 10,
+                pointerEvents: 'none' // Pour ne pas gêner les clics sur la vidéo
+              }}
+              onError={(e) => console.error('❌ Erreur chargement image overlay:', e.target.src)}
+            />
+          ))}
 
           {/* Overlay de chargement */}
           {(isLoading || isBuffering) && !hasError && (
@@ -460,7 +502,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
                 <p><strong>URL:</strong> {video.url}</p>
                 <p><strong>Titre:</strong> {video.title}</p>
               </div>
-              <Button 
+              <Button
                 onClick={() => {
                   setHasError(false);
                   setErrorMessage('');
@@ -477,10 +519,9 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
           )}
 
           {/* Contrôles vidéo */}
-          <div 
-            className={`absolute inset-0 transition-opacity duration-300 ${
-              isControlsVisible ? 'opacity-100' : 'opacity-0'
-            }`}
+          <div
+            className={`absolute inset-0 transition-opacity duration-300 ${isControlsVisible ? 'opacity-100' : 'opacity-0'
+              }`}
           >
             {/* Bouton play central */}
             {!isPlaying && !isLoading && (
@@ -535,7 +576,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
                   >
                     <SkipBack className="h-5 w-5" />
                   </Button>
-                  
+
                   <Button
                     variant="ghost"
                     size="icon"
@@ -559,7 +600,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
                         <Volume2 className="h-5 w-5" />
                       )}
                     </Button>
-                    
+
                     <div className="w-24">
                       <Slider
                         value={[isMuted ? 0 : volume * 100]}
@@ -658,7 +699,7 @@ export default function VideoPlayerModal({ isOpen, onClose, video }) {
                 )}
               </div>
             </div>
-            
+
             {video.description && (
               <p className="text-gray-300 text-sm">
                 {video.description}

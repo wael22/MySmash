@@ -111,10 +111,10 @@ const ShareVideoModal = ({ isOpen, onClose, video }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] rounded-2xl">
                 <DialogHeader>
-                    <DialogTitle>Partager la vidéo</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-xl font-semibold">Partager la vidéo</DialogTitle>
+                    <DialogDescription className="text-gray-600">
                         Partagez "{video.title || 'cette vidéo'}" avec d'autres joueurs. Vous pouvez entrer plusieurs emails séparés par des virgules.
                     </DialogDescription>
                 </DialogHeader>
@@ -123,7 +123,7 @@ const ShareVideoModal = ({ isOpen, onClose, video }) => {
                     <div className="space-y-4 py-4">
                         {/* Email Input */}
                         <div className="space-y-2">
-                            <Label htmlFor="emails">
+                            <Label htmlFor="emails" className="text-sm font-medium text-gray-900">
                                 <Mail className="inline h-4 w-4 mr-2" />
                                 Email(s) des destinataires *
                             </Label>
@@ -135,13 +135,14 @@ const ShareVideoModal = ({ isOpen, onClose, video }) => {
                                 onChange={(e) => setRecipientEmails(e.target.value)}
                                 disabled={loading}
                                 required
+                                className="rounded-lg"
                             />
                             <p className="text-xs text-gray-500">Séparez plusieurs emails par des virgules (,) ou points-virgules (;)</p>
                         </div>
 
                         {/* Message Input */}
                         <div className="space-y-2">
-                            <Label htmlFor="message">
+                            <Label htmlFor="message" className="text-sm font-medium text-gray-900">
                                 <MessageSquare className="inline h-4 w-4 mr-2" />
                                 Message (optionnel)
                             </Label>
@@ -153,6 +154,7 @@ const ShareVideoModal = ({ isOpen, onClose, video }) => {
                                 disabled={loading}
                                 rows={3}
                                 maxLength={500}
+                                className="rounded-lg resize-none"
                             />
                             <p className="text-xs text-gray-500">{message.length}/500 caractères</p>
                         </div>
@@ -174,25 +176,29 @@ const ShareVideoModal = ({ isOpen, onClose, video }) => {
                         )}
                     </div>
 
-                    <DialogFooter>
-                        <Button
+                    <DialogFooter className="gap-3 sm:gap-2">
+                        <button
                             type="button"
-                            variant="outline"
                             onClick={handleClose}
                             disabled={loading}
+                            className="btn-secondary-modern flex-1 sm:flex-initial"
                         >
                             Annuler
-                        </Button>
-                        <Button type="submit" disabled={loading}>
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary-modern flex-1 sm:flex-initial"
+                        >
                             {loading ? (
                                 <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Partage en cours...
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Partage en cours...</span>
                                 </>
                             ) : (
                                 'Partager'
                             )}
-                        </Button>
+                        </button>
                     </DialogFooter>
                 </form>
             </DialogContent>

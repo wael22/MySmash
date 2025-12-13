@@ -43,6 +43,7 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 import CourtControlPanel from './CourtControlPanel';
+import ClubOverlayManager from './ClubOverlayManager';
 
 const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   const [clubs, setClubs] = useState([]);
@@ -56,6 +57,7 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   const [showControlModal, setShowControlModal] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
   const [selectedCourt, setSelectedCourt] = useState(null);
+  const [showOverlayManager, setShowOverlayManager] = useState(false);
   const [clubCourts, setClubCourts] = useState([]);
   const [clubFormData, setClubFormData] = useState({
     name: '',
@@ -497,6 +499,10 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
                             <Settings className="mr-2 h-4 w-4" />
                             Contrôler Terrains
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setSelectedClub(club); setShowOverlayManager(true); }}>
+                            <Settings className="mr-2 h-4 w-4" />
+                            Gérer Overlays
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openCourtModal(club)}>
                             <Plus className="mr-2 h-4 w-4" />
                             Ajouter Terrain
@@ -810,7 +816,19 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+
+
+      {/* Manager d'Overlays */}
+      {
+        selectedClub && (
+          <ClubOverlayManager
+            club={selectedClub}
+            isOpen={showOverlayManager}
+            onClose={() => setShowOverlayManager(false)}
+          />
+        )
+      }
+    </div >
   );
 };
 

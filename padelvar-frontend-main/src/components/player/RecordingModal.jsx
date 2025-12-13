@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
 // MODIFIÉ : On importe playerService car c'est lui qui connaît les clubs suivis
-import { videoService, playerService } from '../../lib/api'; 
+import { videoService, playerService } from '../../lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import CameraPreview from './CameraPreview';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -21,10 +21,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Play, 
-  Square, 
-  QrCode, 
+import {
+  Play,
+  Square,
+  QrCode,
   Loader2,
   Camera
 } from 'lucide-react';
@@ -91,7 +91,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
       // Use the new player-accessible endpoint
       const response = await videoService.getClubCourtsForPlayers(clubId);
       setCourts(response.data.courts || []);
-      
+
       if (!response.data.courts || response.data.courts.length === 0) {
         setError('Aucun terrain trouvé pour ce club');
       }
@@ -132,15 +132,15 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
         description: recordingData.description,
         qr_code: recordingData.qr_code || undefined
       });
-      
-      setRecordingData(prev => ({ 
-        ...prev, 
-        recording_id: response.data.recording_id, 
-        startTime: Date.now() 
+
+      setRecordingData(prev => ({
+        ...prev,
+        recording_id: response.data.recording_id,
+        startTime: Date.now()
       }));
-      
+
       setStep('recording');
-      
+
       // Optionnel : programmer un arrêt automatique après la durée prévue
       setTimeout(() => {
         if (step === 'recording') {
@@ -148,7 +148,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
           setError('Temps d\'enregistrement écoulé. Veuillez arrêter l\'enregistrement.');
         }
       }, 90 * 60 * 1000); // 90 minutes
-      
+
     } catch (error) {
       setError(error.response?.data?.error || 'Erreur lors du démarrage');
     } finally {
@@ -161,13 +161,13 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     setError('');
     try {
       // Calculer la durée réelle d'enregistrement
-      const actualDuration = recordingData.startTime 
+      const actualDuration = recordingData.startTime
         ? Math.floor((Date.now() - recordingData.startTime) / 1000 / 60) // en minutes
         : 90;
-      
+
       const response = await videoService.stopRecording({
         recording_id: recordingData.recording_id,
-        title: recordingData.title || `Match du ${new Date().toLocaleDateString('fr-FR')}`,
+        title: recordingData.title || null,  // Ne pas générer de titre par défaut, laisser le backend le faire
         description: recordingData.description,
         court_id: recordingData.court_id,
         duration: actualDuration
@@ -176,7 +176,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
       // Afficher un message de succès
       setError('');
       alert(`Enregistrement sauvegardé avec succès ! Durée: ${actualDuration} minutes`);
-      
+
       onVideoCreated();
       handleClose();
     } catch (error) {
@@ -283,7 +283,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 courtName={courts.find(c => c.id.toString() === recordingData.court_id)?.name || 'Terrain'}
                 isRecording={true}
               />
-              
+
               {/* Timer et contrôles */}
               <div className="text-center space-y-4">
                 <div>
@@ -293,14 +293,14 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                     {recordingData.title || `Match du ${new Date().toLocaleDateString('fr-FR')}`}
                   </p>
                 </div>
-                
+
                 <div className="flex items-center justify-center space-x-4">
                   <Button onClick={handleStopRecording} disabled={isLoading} variant="destructive" size="lg">
                     {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
                     Arrêter l'enregistrement
                   </Button>
                 </div>
-                
+
                 {/* Informations supplémentaires */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="grid grid-cols-2 gap-4 text-sm">

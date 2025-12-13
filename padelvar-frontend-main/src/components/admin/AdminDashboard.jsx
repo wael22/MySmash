@@ -8,6 +8,7 @@ import ClubHistoryAdmin from './ClubHistoryAdmin';
 import SystemConfiguration from './SystemConfiguration';
 import SystemLogs from './SystemLogs';
 import SupportManagement from './SupportManagement';
+import OverviewTab from './OverviewTab';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -151,8 +152,9 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-8">
+            <TabsTrigger value="overview">Vue d'Ensemble</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="clubs">Clubs</TabsTrigger>
             <TabsTrigger value="videos">Vidéos</TabsTrigger>
@@ -161,6 +163,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="logs"><span className="inline-flex items-center gap-1"><FileText className="h-4 w-4" />Logs</span></TabsTrigger>
             <TabsTrigger value="support"><span className="inline-flex items-center gap-1"><MessageSquare className="h-4 w-4" />Support</span></TabsTrigger>
           </TabsList>
+
+          <TabsContent value="overview" className="mt-6">
+            <OverviewTab />
+          </TabsContent>
 
           <TabsContent value="users" className="mt-6">
             <UserManagement onStatsUpdate={loadStats} />

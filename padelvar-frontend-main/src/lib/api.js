@@ -12,6 +12,22 @@ const api = axios.create({
   },
 });
 
+export const getAssetUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+
+  // Enlever le slash initial si présent pour nettoyer
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+  // Base URL sans /api
+  const baseUrl = API_BASE_URL.replace(/\/api$/, '');
+
+  // S'assurer que cleanPath ne commence pas par static si baseUrl finit déjà par rien (cas localhost)
+  // Mais ici baseUrl est http://localhost:5000
+
+  return `${baseUrl}/${cleanPath}`;
+};
+
 let isRedirecting = false;
 
 // Intercepteur pour logger les requêtes
@@ -103,6 +119,10 @@ export const videoService = {
   getSharedWithMe: () => api.get('/videos/shared-with-me'),
   removeSharedAccess: (sharedVideoId) => api.delete(`/videos/shared/${sharedVideoId}`),
   getMySharedVideos: () => api.get('/videos/my-shared-videos'),
+  removeSharedAccess: (sharedVideoId) => api.delete(`/videos/shared/${sharedVideoId}`),
+  getMySharedVideos: () => api.get('/videos/my-shared-videos'),
+  // Overlays
+  getVideoOverlays: (videoId) => api.get(`/videos/${videoId}/overlays`),
 };
 
 export const recordingService = {
@@ -159,6 +179,28 @@ export const adminService = {
   createCreditPackage: (packageData) => api.post('/admin/credit-packages', packageData),
   updateCreditPackage: (packageId, packageData) => api.put(`/admin/credit-packages/${packageId}`, packageData),
   deleteCreditPackage: (packageId) => api.delete(`/admin/credit-packages/${packageId}`),
+  updateCreditPackage: (packageId, packageData) => api.put(`/admin/credit-packages/${packageId}`, packageData),
+  deleteCreditPackage: (packageId) => api.delete(`/admin/credit-packages/${packageId}`),
+
+  // Gestion des overlays
+  uploadImage: (formData) => api.post('/admin/uploads/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getClubOverlays: (clubId) => api.get(`/admin/clubs/${clubId}/overlays`),
+  createClubOverlay: (clubId, data) => api.post(`/admin/clubs/${clubId}/overlays`, data),
+  updateClubOverlay: (clubId, overlayId, data) => api.put(`/admin/clubs/${clubId}/overlays/${overlayId}`, data),
+  deleteClubOverlay: (clubId, overlayId) => api.delete(`/admin/clubs/${clubId}/overlays/${overlayId}`),
+};
+
+export const analyticsService = {
+  getSystemHealth: () => api.get('/analytics/system-health'),
+  getPlatformOverview: () => api.get('/analytics/platform-overview'),
+  getUserGrowth: (timeframe = 'week') => api.get(`/analytics/user-growth?timeframe=${timeframe}`),
+  getClubAdoption: (timeframe = 'month') => api.get(`/analytics/club-adoption?timeframe=${timeframe}`),
+  getRevenueGrowth: (timeframe = 'month') => api.get(`/analytics/revenue-growth?timeframe=${timeframe}`),
+  getUserEngagement: () => api.get('/analytics/user-engagement'),
+  getTopClubs: (limit = 10) => api.get(`/analytics/top-clubs?limit=${limit}`),
+  getFinancialOverview: () => api.get('/analytics/financial-overview'),
 };
 
 export const playerService = {

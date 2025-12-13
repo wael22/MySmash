@@ -60,11 +60,11 @@ const BuyCreditsModal = ({ isOpen, onClose, onCreditsUpdated }) => {
       setError('Veuillez sélectionner un package');
       return;
     }
-    
+
     setIsLoading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       const response = await videoService.buyCredits({
         credits_amount: selectedPkg.credits,
@@ -72,7 +72,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onCreditsUpdated }) => {
         package_type: selectedPkg.type,
         package_id: selectedPkg.id
       });
-      
+
       setSuccess(`${selectedPkg.credits} crédits achetés avec succès pour ${selectedPkg.price_dt} DT !`);
       if (onCreditsUpdated) onCreditsUpdated();
       setTimeout(onClose, 2000);
@@ -85,81 +85,86 @@ const BuyCreditsModal = ({ isOpen, onClose, onCreditsUpdated }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
+          <DialogTitle className="flex items-center text-xl font-semibold">
             <Coins className="h-5 w-5 mr-2 text-yellow-500" />
             Acheter des Crédits
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-gray-600">
             Rechargez votre solde pour enregistrer vos matchs. Paiement sécurisé en Dinars Tunisiens (DT).
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="rounded-xl">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           {success && (
-            <Alert className="bg-green-50 text-green-800">
+            <Alert className="bg-green-50 text-green-800 border-green-200 rounded-xl">
               <Check className="h-4 w-4" />
               <AlertDescription>{success}</AlertDescription>
             </Alert>
           )}
-          
+
           {/* Solde actuel */}
-          <Card>
-            <CardContent className="pt-6 flex justify-between items-center">
-              <span className="text-sm">Solde actuel:</span>
-              <span className="font-bold flex items-center">
-                <Coins className="h-4 w-4 mr-1.5 text-yellow-500" />
+          <div className="card-modern bg-gradient-to-br from-yellow-50 to-white border-2 border-yellow-200">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Solde actuel:</span>
+              <span className="font-bold text-xl flex items-center text-yellow-900">
+                <Coins className="h-5 w-5 mr-1.5 text-yellow-500" />
                 {user?.credits_balance || 0} crédits
               </span>
-            </CardContent>
-          </Card>
-          
+            </div>
+          </div>
+
           {/* Sélection des packages */}
           <div>
-            <Label className="text-base font-semibold mb-3 block">Choisissez votre package</Label>
+            <Label className="text-base font-semibold mb-3 block text-gray-900">Choisissez votre package</Label>
             <RadioGroup value={selectedPackage} onValueChange={setSelectedPackage} className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {creditPackages.map((pkg) => (
-                <Card key={pkg.id} className={`cursor-pointer transition-all hover:shadow-md ${selectedPackage === pkg.id ? 'ring-2 ring-blue-500' : ''}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value={pkg.id} id={pkg.id} className="mt-1" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-semibold flex items-center gap-2">
-                              {pkg.credits} crédits
-                              {pkg.popular && <Badge className="bg-blue-500">Populaire</Badge>}
-                              {pkg.badge && <Badge variant="outline" className="text-green-600">{pkg.badge}</Badge>}
+                <div
+                  key={pkg.id}
+                  className={`card-modern cursor-pointer transition-all hover:shadow-lg ${selectedPackage === pkg.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-blue-300'
+                    }`}
+                  onClick={() => setSelectedPackage(pkg.id)}
+                >
+                  <div className="flex items-start space-x-3">
+                    <RadioGroupItem value={pkg.id} id={pkg.id} className="mt-1 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="font-semibold text-base mb-1 flex items-center gap-2 flex-wrap">
+                            {pkg.credits} crédits
+                            {pkg.popular && <Badge className="bg-blue-500 rounded-full px-2 text-xs">Populaire</Badge>}
+                            {pkg.badge && <Badge variant="outline" className="text-green-600 rounded-full text-xs">{pkg.badge}</Badge>}
+                          </div>
+                          <div className="text-sm text-gray-600">{pkg.description}</div>
+                        </div>
+                        <div className="text-right flex-shrink-0 min-w-[100px]">
+                          <div className="font-bold text-xl text-gray-900 whitespace-nowrap">{pkg.price_dt} DT</div>
+                          {pkg.original_price_dt && (
+                            <div className="text-xs text-gray-400 line-through whitespace-nowrap">{pkg.original_price_dt} DT</div>
+                          )}
+                          {pkg.savings_dt > 0 && (
+                            <div className="text-xs text-green-600 font-medium mt-1 whitespace-nowrap">
+                              Économie: {pkg.savings_dt} DT
                             </div>
-                            <div className="text-sm text-gray-600 mt-1">{pkg.description}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-lg">{pkg.price_dt} DT</div>
-                            {pkg.original_price_dt && (
-                              <div className="text-sm text-gray-500 line-through">{pkg.original_price_dt} DT</div>
-                            )}
-                            {pkg.savings_dt > 0 && (
-                              <div className="text-sm text-green-600 font-medium">
-                                Économie: {pkg.savings_dt} DT
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </RadioGroup>
           </div>
-          
+
           {/* Méthodes de paiement */}
           <div>
             <Label className="text-base font-semibold mb-3 block">Méthode de paiement</Label>
@@ -185,7 +190,7 @@ const BuyCreditsModal = ({ isOpen, onClose, onCreditsUpdated }) => {
               ))}
             </RadioGroup>
           </div>
-          
+
           {/* Récapitulatif */}
           {getSelectedPackage() && (
             <Card className="bg-blue-50">
@@ -215,20 +220,32 @@ const BuyCreditsModal = ({ isOpen, onClose, onCreditsUpdated }) => {
               </CardContent>
             </Card>
           )}
-          
+
           {/* Boutons d'action */}
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={onClose}
+              className="btn-secondary-modern px-6"
+            >
               Annuler
-            </Button>
-            <Button onClick={handlePurchase} disabled={isLoading || !getSelectedPackage()}>
+            </button>
+            <button
+              onClick={handlePurchase}
+              disabled={isLoading || !getSelectedPackage()}
+              className="btn-primary-modern px-6"
+            >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Traitement...</span>
+                </>
               ) : (
-                <ShoppingCart className="h-4 w-4 mr-2" />
+                <>
+                  <ShoppingCart className="h-4 w-4" />
+                  <span>Acheter {getSelectedPackage()?.price_dt} DT</span>
+                </>
               )}
-              Acheter {getSelectedPackage()?.price_dt} DT
-            </Button>
+            </button>
           </div>
         </div>
       </DialogContent>

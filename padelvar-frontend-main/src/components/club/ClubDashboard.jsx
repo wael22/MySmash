@@ -36,11 +36,15 @@ import {
   User,
   Loader2,
   Gift,
-  StopCircle
+  StopCircle,
+  Building2
 } from 'lucide-react';
 
 import ClubHistory from './ClubHistory';
 import BuyClubCreditsModal from './BuyClubCreditsModal';
+import StatCardModern from '../common/StatCardModern';
+import NavigationBadges from '../common/NavigationBadges';
+import CourtCardModern from '../common/CourtCardModern';
 
 const ClubDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -57,6 +61,7 @@ const ClubDashboard = () => {
   const [creditsToAdd, setCreditsToAdd] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBuyCreditsModal, setShowBuyCreditsModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('joueurs');
 
   useEffect(() => {
     loadDashboard();
@@ -135,55 +140,89 @@ const ClubDashboard = () => {
           <h1 className="text-3xl font-bold text-gray-900">{dashboardData.club?.name || 'Club'}</h1>
           <p className="text-gray-600 mt-2">Gérez vos joueurs et suivez l'activité de votre club</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Joueurs Inscrits</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{dashboardData.stats?.total_players ?? 0}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Vidéos Enregistrées</CardTitle><Video className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{dashboardData.stats?.total_videos ?? 0}</div></CardContent></Card>
 
-          {/* NOUVELLE CARTE : Solde du Club */}
-          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-blue-900">💰 Solde du Club</CardTitle>
-              <Coins className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between">
-                <div className="text-2xl font-bold text-blue-900">{dashboardData.club?.credits_balance ?? 0}</div>
-                <span className="text-xs text-blue-600">crédits</span>
+        {/* Statistiques modernes */}
+        <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <StatCardModern
+            icon={Users}
+            title="Joueurs Inscrits"
+            value={dashboardData.stats?.total_players ?? 0}
+            iconBgColor="bg-blue-100"
+            iconColor="text-blue-600"
+          />
+
+          <StatCardModern
+            icon={Video}
+            title="Vidéos Enregistrées"
+            value={dashboardData.stats?.total_videos ?? 0}
+            iconBgColor="bg-purple-100"
+            iconColor="text-purple-600"
+          />
+
+          {/* Carte spéciale Solde du Club */}
+          <div className="card-modern bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-1">💰 Solde du Club</p>
+                <p className="text-3xl font-bold text-blue-900">{dashboardData.club?.credits_balance ?? 0}</p>
+                <p className="text-sm text-blue-700 mt-1">crédits disponibles</p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-3 border-blue-300 text-blue-700 hover:bg-blue-50"
-                onClick={() => setShowBuyCreditsModal(true)}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Acheter
-              </Button>
-            </CardContent>
-          </Card>
+              <div className="icon-circle bg-blue-200">
+                <Coins className="h-5 w-5 text-blue-700" />
+              </div>
+            </div>
+            <button
+              onClick={() => setShowBuyCreditsModal(true)}
+              className="btn-secondary-modern w-full text-sm border-blue-300 text-blue-700 hover:bg-blue-100"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Acheter</span>
+            </button>
+          </div>
 
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Crédits Offerts par le Club</CardTitle><Gift className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{dashboardData.stats?.total_credits_offered ?? 0}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Terrains</CardTitle><span className="text-xl">🎾</span></CardHeader><CardContent><div className="text-2xl font-bold">{dashboardData.stats?.total_courts ?? 0}</div></CardContent></Card>
+          <StatCardModern
+            icon={Gift}
+            title="Crédits Offerts"
+            value={dashboardData.stats?.total_credits_offered ?? 0}
+            subtitle="par le club"
+            iconBgColor="bg-green-100"
+            iconColor="text-green-600"
+          />
+
+          <StatCardModern
+            icon={Building2}
+            title="Terrains"
+            value={dashboardData.stats?.total_courts ?? 0}
+            iconBgColor="bg-orange-100"
+            iconColor="text-orange-600"
+          />
         </div>
-        <Tabs defaultValue="joueurs" className="w-full">
-          <TabsList>
-            <TabsTrigger value="joueurs">Joueurs</TabsTrigger>
-            <TabsTrigger value="terrains">Terrains</TabsTrigger>
-            <TabsTrigger value="videos">Vidéos</TabsTrigger>
-            <TabsTrigger value="historique">Historique</TabsTrigger>
-          </TabsList>
 
-          <TabsContent value="joueurs" className="mt-6">
+        {/* Navigation moderne */}
+        <NavigationBadges
+          items={[
+            { value: 'joueurs', label: 'Joueurs', icon: Users },
+            { value: 'terrains', label: 'Terrains', icon: Building2 },
+            { value: 'videos', label: 'Vidéos', icon: Video },
+            { value: 'historique', label: 'Historique', icon: Calendar }
+          ]}
+          activeValue={activeTab}
+          onChange={setActiveTab}
+        />
+
+        {/* Contenu des onglets */}
+        <div className="mt-6">
+          {activeTab === 'joueurs' && (
             <Card>
               <CardHeader><CardTitle>Joueurs du Club</CardTitle><CardDescription>Gérez les informations et crédits de vos joueurs</CardDescription></CardHeader>
               <CardContent>{(dashboardData.players?.length ?? 0) === 0 ? <div className="text-center py-8"><Users className="h-12 w-12 text-gray-400 mx-auto mb-4" /><h3 className="text-lg font-medium">Aucun joueur inscrit</h3><p className="text-gray-600">Les joueurs apparaîtront ici.</p></div> : <Table><TableHeader><TableRow><TableHead>Nom</TableHead><TableHead>Email</TableHead><TableHead>Téléphone</TableHead><TableHead>Crédits</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{dashboardData.players.map((player) => <TableRow key={player.id}><TableCell className="font-medium">{player.name}</TableCell><TableCell>{player.email}</TableCell><TableCell>{player.phone_number || '-'}</TableCell><TableCell><div className="flex items-center space-x-1"><Coins className="h-4 w-4 text-yellow-500" /><span>{player.credits_balance}</span></div></TableCell><TableCell><Button size="sm" variant="outline" onClick={() => openCreditsModal(player)}><Plus className="h-4 w-4 mr-2" />Ajouter Crédits</Button></TableCell></TableRow>)}</TableBody></Table>}</CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* ==================================================================== */}
           {/* CETTE SECTION DOIT ÊTRE PRÉSENTE ET CORRECTE */}
           {/* ==================================================================== */}
-          <TabsContent value="terrains" className="mt-6">
+          {activeTab === 'terrains' && (
             <Card>
               <CardHeader>
                 <CardTitle>Terrains du Club</CardTitle>
@@ -244,12 +283,13 @@ const ClubDashboard = () => {
                           <Button
                             size="sm"
                             variant={court.is_occupied ? "secondary" : "outline"}
-                            className="w-full"
+                            className="w-full touch-target"
                             onClick={() => window.open(court.camera_url, '_blank')}
                             disabled={!court.camera_url}
                           >
                             <Play className="h-4 w-4 mr-2" />
-                            Voir en direct
+                            <span className="hidden sm:inline">Voir en direct</span>
+                            <span className="sm:hidden">Live</span>
                           </Button>
                           {court.is_occupied && (
                             <Button
@@ -269,19 +309,19 @@ const ClubDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="videos" className="mt-6">
+          {activeTab === 'videos' && (
             <Card>
               <CardHeader><CardTitle>Vidéos du Club</CardTitle><CardDescription>Toutes les vidéos enregistrées par vos joueurs</CardDescription></CardHeader>
               <CardContent>{(dashboardData.videos?.length ?? 0) === 0 ? <div className="text-center py-8"><Video className="h-12 w-12 text-gray-400 mx-auto mb-4" /><h3 className="text-lg font-medium">Aucune vidéo enregistrée</h3><p className="text-gray-600">Les vidéos de vos joueurs apparaîtront ici.</p></div> : <Table><TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Joueur</TableHead><TableHead>Durée</TableHead><TableHead>Date</TableHead></TableRow></TableHeader><TableBody>{dashboardData.videos.map((video) => <TableRow key={video.id}><TableCell><div className="font-medium">{video.title}</div>{video.description && <div className="text-sm text-gray-500 line-clamp-1">{video.description}</div>}</TableCell><TableCell><div className="flex items-center space-x-2"><User className="h-4 w-4 text-gray-400" /><span>{video.player_name || 'N/A'}</span></div></TableCell><TableCell><div className="flex items-center space-x-2"><Clock className="h-4 w-4 text-gray-400" /><span>{formatDuration(video.duration)}</span></div></TableCell><TableCell><div className="flex items-center space-x-2"><Calendar className="h-4 w-4 text-gray-400" /><span>{formatDate(video.recorded_at || video.created_at)}</span></div></TableCell></TableRow>)}</TableBody></Table>}</CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="historique" className="mt-6">
+          {activeTab === 'historique' && (
             <ClubHistory />
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
       <Dialog open={showCreditsModal} onOpenChange={setShowCreditsModal}>
         <DialogContent>
@@ -324,7 +364,7 @@ const ClubDashboard = () => {
         onCreditsUpdated={loadDashboard}
         club={dashboardData.club}
       />
-    </div>
+    </div >
   );
 };
 

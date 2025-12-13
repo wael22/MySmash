@@ -1,0 +1,378 @@
+/* ============================================
+   IMPORT DES VARIABLES ET DESIGN SYSTEM
+   ============================================ */
+
+@import './styles/variables.css';
+
+/* ============================================
+   RESET ET STYLES GLOBAUX
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  touch-action: manipulation;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+/* ============================================
+   CLASSES UTILITAIRES MODERNES
+   ============================================ */
+
+/* === Cartes Modernes === */
+.card-modern {
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  transition: box-shadow var(--transition-base) var(--transition-ease);
+}
+
+.card-modern:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-modern-compact {
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  padding: var(--spacing-md);
+}
+
+/* === Icônes dans Cercles === */
+.icon-circle {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.icon-circle-sm {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.icon-circle-lg {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+}
+
+/* === Boutons Modernes === */
+.btn-primary-modern {
+  background: var(--color-primary);
+  color: var(--color-text-white);
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 15px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base) var(--transition-ease);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.btn-primary-modern:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-primary-modern:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary-modern:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary-modern {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-bg-tertiary);
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 15px;
+  transition: all var(--transition-base) var(--transition-ease);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.btn-secondary-modern:hover:not(:disabled) {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+}
+
+/* === Badges de Navigation === */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base) var(--transition-ease);
+  border: none;
+  white-space: nowrap;
+  position: relative;
+}
+
+.nav-badge.active {
+  background: var(--color-primary);
+  color: var(--color-text-white);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-badge.inactive {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.nav-badge.inactive:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.nav-badge-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-badge-counter {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-error);
+  color: var(--color-text-white);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* === Container de Navigation Scrollable === */
+.nav-badges-container {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+  width: 100%;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE et Edge */
+}
+
+.nav-badges-container::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari et Opera */
+}
+
+/* === Overlays pour Images === */
+.image-overlay-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--color-primary);
+  color: var(--color-text-white);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--shadow-md);
+}
+
+.image-overlay-duration {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--color-bg-overlay);
+  color: var(--color-text-white);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+/* === Dropdown Menu === */
+.dropdown-menu-modern {
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  min-width: 200px;
+}
+
+.dropdown-item-modern {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  transition: background var(--transition-fast) var(--transition-ease);
+}
+
+.dropdown-item-modern:hover {
+  background: var(--color-bg-secondary);
+}
+
+.dropdown-item-modern.danger {
+  color: var(--color-error);
+}
+
+.dropdown-item-modern.danger:hover {
+  background: var(--color-error-light);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-bg-tertiary);
+  margin: 8px 0;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 767px) {
+
+  /* Padding mobile réduit */
+  .max-w-7xl {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Boutons pleine largeur sur mobile */
+  .btn-full-mobile {
+    width: 100%;
+  }
+
+  /* Navigation badges scrollable avec padding */
+  .nav-badges-container {
+    margin: 0 -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 8px;
+  }
+
+  /* S'assurer que les badges ne se wrapent pas */
+  .nav-badge {
+    flex-shrink: 0;
+  }
+}
+
+/* ============================================
+   SCROLLBAR PERSONNALISÉE (DESKTOP)
+   ============================================ */
+
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-sm);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-base) var(--transition-ease);
+}
+
+/* ============================================
+   UTILITAIRES
+   ============================================ */
+
+.text-gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}

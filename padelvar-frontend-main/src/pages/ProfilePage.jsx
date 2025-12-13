@@ -110,13 +110,13 @@ const ProfilePage = () => {
       } else {
         updateResponse = await authService.updateProfile(formData);
       }
-      
+
       // Si la mise à jour réussit et retourne des données utilisateur mises à jour
       if (updateResponse.data && updateResponse.data.user) {
         // Mettre à jour le contexte d'authentification avec les nouvelles données
         setUser(updateResponse.data.user);
       }
-      
+
       // Afficher le succès
       setSuccess('Profil mis à jour avec succès !');
 
@@ -152,13 +152,13 @@ const ProfilePage = () => {
           <CardContent>
             <Tabs defaultValue="profile" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="profile" className="flex items-center gap-2">
+                <TabsTrigger value="profile" className="flex items-center justify-center gap-1">
                   <User className="h-4 w-4" />
-                  Informations personnelles
+                  <span className="hidden md:inline">Profil</span>
                 </TabsTrigger>
-                <TabsTrigger value="password" className="flex items-center gap-2">
+                <TabsTrigger value="password" className="flex items-center justify-center gap-1">
                   <Lock className="h-4 w-4" />
-                  Changer le mot de passe
+                  <span className="hidden md:inline">Sécurité</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -169,7 +169,7 @@ const ProfilePage = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
                   {success && <Alert variant="default" className="bg-green-100 text-green-800"><AlertDescription>{success}</AlertDescription></Alert>}
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="name">Nom {user.role === 'CLUB' ? 'du Club' : 'Complet'}</Label>
                     <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} />
@@ -185,7 +185,7 @@ const ProfilePage = () => {
                     <Label htmlFor="phone_number">Numéro de téléphone</Label>
                     <Input id="phone_number" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} />
                   </div>
-                  
+
                   {user.role === 'CLUB' && (
                     <div className="space-y-2">
                       <Label htmlFor="address">Adresse du Club</Label>
@@ -193,14 +193,22 @@ const ProfilePage = () => {
                     </div>
                   )}
 
-                  <div className="flex items-center space-x-4">
-                    <Button type="submit" disabled={loading}>
-                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
+                    >
+                      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       Sauvegarder les modifications
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(-1)}
+                      className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                    >
                       Retour
-                    </Button>
+                    </button>
                   </div>
                 </form>
               </TabsContent>
@@ -224,11 +232,11 @@ const ProfilePage = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="oldPassword">Mot de passe actuel</Label>
-                      <Input 
-                        id="oldPassword" 
-                        name="oldPassword" 
-                        type="password" 
-                        value={passwordData.oldPassword} 
+                      <Input
+                        id="oldPassword"
+                        name="oldPassword"
+                        type="password"
+                        value={passwordData.oldPassword}
                         onChange={handlePasswordChange}
                         required
                       />
@@ -236,11 +244,11 @@ const ProfilePage = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                      <Input 
-                        id="newPassword" 
-                        name="newPassword" 
-                        type="password" 
-                        value={passwordData.newPassword} 
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        value={passwordData.newPassword}
                         onChange={handlePasswordChange}
                         required
                         minLength={6}
@@ -250,21 +258,25 @@ const ProfilePage = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe</Label>
-                      <Input 
-                        id="confirmPassword" 
-                        name="confirmPassword" 
-                        type="password" 
-                        value={passwordData.confirmPassword} 
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        value={passwordData.confirmPassword}
                         onChange={handlePasswordChange}
                         required
                         minLength={6}
                       />
                     </div>
 
-                    <Button type="submit" disabled={passwordLoading} className="w-full">
-                      {passwordLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <button
+                      type="submit"
+                      disabled={passwordLoading}
+                      className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                      {passwordLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                       Changer le mot de passe
-                    </Button>
+                    </button>
                   </form>
                 </div>
               </TabsContent>

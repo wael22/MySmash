@@ -1,195 +1,331 @@
 // padelvar-frontend/src/pages/PlayerDashboard.jsx
+// REFONTE AVEC NOUVEAU DESIGN MODERNE
 
 import { useState, useEffect } from 'react';
 import { videoService, recordingService } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/common/Navbar';
-import StatCard from '@/components/player/StatCard';
+import StatCardModern from '@/components/common/StatCardModern';
+import NavigationBadges from '@/components/common/NavigationBadges';
+import VideoCardModern from '@/components/common/VideoCardModern';
 import ClubFollowing from '@/components/player/ClubFollowing';
 import AdvancedRecordingModal from '@/components/player/AdvancedRecordingModal';
 import ActiveRecordingBanner from '@/components/player/ActiveRecordingBanner';
 import BuyCreditsModal from '@/components/player/BuyCreditsModal';
 import VideoEditorModal from '@/components/player/VideoEditorModal';
-import VideoPlayerModal from '@/components/player/VideoPlayerModal';
 import BunnyVideoPlayerModal from '@/components/player/BunnyVideoPlayerModal';
 import CreditSystemDisplay from '@/components/player/CreditSystemDisplay';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Video, Clock, BarChart, Plus, QrCode, Loader2, Play, Share2, MoreHorizontal, Calendar, Scissors, Trash2, Coins, Timer, MessageSquare, Bell } from 'lucide-react';
 import ContactSupport from './ContactSupport';
 import NotificationsTab from './NotificationsTab';
 import ShareVideoModal from './ShareVideoModal';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Video, Clock, BarChart, Plus, QrCode, Loader2, Building, MessageSquare, Bell, Coins } from 'lucide-react';
 
-// ====================================================================
-// COMPOSANT VIDÉO (CORRIGÉ POUR L'AFFICHAGE DES BOUTONS)
-// ====================================================================
-const MyVideoSection = ({ onDataChange, onEditVideo, onShareVideo }) => {
-  const [videos, setVideos] = useState([]);
+const PlayerDashboard = () => {
+  const { user } = useAuth();
+
+  // États pour les données
+  const [dashboardData, setDashboardData] = useState({ stats: {}, videos: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedVideo, setSelectedVideo] = useState(null);
+
+  // Navigation par badges
+  const [activeTab, setActiveTab] = useState('videos');
+
+  // États pour les modals
+  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
+  const [isBuyCreditsModalOpen, setIsBuyCreditsModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+
+  // Enregistrement actif
+  const [activeRecording, setActiveRecording] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
-    loadVideos();
+    loadDashboardData();
+    checkActiveRecording();
+
+    const interval = setInterval(() => {
+      checkActiveRecording();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const loadVideos = async () => {
+  const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await videoService.getMyVideos();
-      setVideos(response.data.videos || []);
+      // Charger seulement les vidéos (pas de getMyStats qui n'existe pas)
+      const videosRes = await videoService.getMyVideos();
+
+      setDashboardData({
+        stats: {}, // Stats calculées côté frontend
+        videos: videosRes.data.videos || []
+      });
     } catch (err) {
-      setError('Erreur lors du chargement des vidéos.');
+      setError('Erreur lors du chargement des données.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (videoId) => {
+  const checkActiveRecording = async () => {
+    try {
+      // Utiliser getMyActiveRecording au lieu de getActiveRecording
+      const response = await recordingService.getMyActiveRecording();
+      setActiveRecording(response.data.recording || null);
+    } catch (err) {
+      console.error('Erreur vérification enregistrement:', err);
+    }
+  };
+
+  // Calculs de statistiques
+  const totalVideos = dashboardData.stats.total_videos || dashboardData.videos.length || 0;
+  const totalDuration = dashboardData.stats.total_duration || 0;
+  const avgDuration = totalVideos > 0 ? Math.round(totalDuration / totalVideos) : 0;
+
+  // Formater la durée en minutes
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0m';
+    const mins = Math.floor(seconds / 60);
+    return `${mins}m`;
+  };
+
+  // Handlers pour les actions vidéo
+  const handlePlayVideo = (video) => {
+    const videoData = {
+      id: video.id,
+      title: video.title || `Match du ${new Date(video.recorded_at).toLocaleDateString()}`,
+      bunny_video_id: video.bunny_video_id,
+      url: video.file_url || video.bunny_video_url,
+      thumbnail: video.thumbnail_url,
+      duration: video.duration,
+      recordedAt: video.recorded_at,
+    };
+    setSelectedVideo(videoData);
+    setIsPlayerOpen(true);
+  };
+
+  const handleShareVideo = (video) => {
+    setSelectedVideo(video);
+    setIsShareModalOpen(true);
+  };
+
+  const handleDownloadVideo = (video) => {
+    if (video.file_url) {
+      window.open(video.file_url, '_blank');
+    }
+  };
+
+  const handleEditVideo = (video) => {
+    setSelectedVideo(video);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteVideo = async (video) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette vidéo ?')) {
       try {
-        await videoService.deleteVideo(videoId);
-        await loadVideos();
-        onDataChange();
+        if (video.is_shared) {
+          await videoService.removeSharedAccess(video.shared_video_id);
+        } else {
+          await videoService.deleteVideo(video.id);
+        }
+        await loadDashboardData();
       } catch (err) {
         setError('Erreur lors de la suppression.');
       }
     }
   };
 
-  const VideoCard = ({ video }) => {
-    const formatDate = (dateString) => new Date(dateString).toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-    const handleDeleteClick = async () => {
-      if (video.is_shared) {
-        // Pour une vidéo partagée, on supprime le partage
-        if (window.confirm('Voulez-vous retirer cette vidéo partagée de votre liste ?')) {
-          try {
-            await videoService.removeSharedAccess(video.shared_video_id);
-            await loadVideos();
-            onDataChange();
-          } catch (err) {
-            setError('Erreur lors de la suppression.');
-          }
-        }
-      } else {
-        // Pour une vidéo possédée, on supprime la vidéo
-        handleDelete(video.id);
-      }
-    };
-
-    return (
-      <Card className="flex flex-col">
-        <CardHeader className="p-0 relative">
-          <div className="aspect-video bg-gray-200 flex items-center justify-center">
-            <Play className="h-12 w-12 text-gray-400" />
-          </div>
-        </CardHeader>
-        <CardContent className="flex-grow pt-4">
-          <CardTitle className="text-lg mb-2 flex justify-between items-center">
-            <span>{video.title || `Match`}</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {!video.is_shared && (
-                  <>
-                    <DropdownMenuItem onClick={() => onEditVideo(video)}><Scissors className="mr-2 h-4 w-4" /><span>Découper / Éditer</span></DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onClick={handleDeleteClick} className="text-red-500">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>{video.is_shared ? 'Retirer' : 'Supprimer'}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardTitle>
-          {video.is_shared && (
-            <div className="text-sm text-blue-600 font-medium mb-1">
-              Partagé par: {video.shared_by}
-            </div>
-          )}
-          <div className="text-sm text-gray-500 flex items-center">
-            <Calendar className="h-4 w-4 mr-2" />
-            {formatDate(video.recorded_at)}
-          </div>
-          {video.is_shared && video.shared_message && (
-            <div className="text-sm bg-blue-50 p-2 rounded mt-2">
-              <p className="italic">"{video.shared_message}"</p>
-            </div>
-          )}
-        </CardContent>
-        {/* === CORRECTION D'AFFICHAGE ICI === */}
-        <CardFooter className="flex space-x-2">
-          <Button
-            className="flex-1"
-            onClick={() => {
-              console.log('🎬 BOUTON REGARDER - Vidéo complète:', video);
-
-              // Préparer les données vidéo pour le lecteur Bunny officiel
-              const videoData = {
-                id: video.id,
-                title: video.title || `Match du ${new Date(video.recorded_at).toLocaleDateString()}`,
-                bunny_video_id: video.bunny_video_id,
-                url: video.file_url || video.bunny_video_url,
-                urlSource: video.bunny_video_id ? 'Bunny Stream' : 'Fallback',
-                thumbnail: video.thumbnail_url,
-                duration: video.duration,
-                recordedAt: video.recorded_at,
-                // Garder les fallback URLs au cas où
-                fallbackUrls: [
-                  video.bunny_video_url && { url: video.bunny_video_url, source: 'Bunny CDN Classic' },
-                  video.file_url && { url: video.file_url, source: 'File URL' },
-                ].filter(Boolean)
-              };
-
-              console.log('🎬 Données vidéo pour Bunny Player:', videoData);
-              console.log('🎬 Bunny Video ID:', videoData.bunny_video_id);
-
-              // Ouvrir le modal player Bunny
-              setSelectedVideo(videoData);
-              setIsPlayerOpen(true);
-            }}
-          >
-            <Play className="h-4 w-4 mr-2" />Regarder
-          </Button>
-          {!video.is_shared && (
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => onShareVideo(video)}
-            >
-              <Share2 className="h-4 w-4 mr-2" />Partager
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
-    );
-  };
-
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  if (error) return <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>;
+  // Items de navigation
+  const navigationItems = [
+    { value: 'videos', label: 'Mes Vidéos', icon: Video },
+    { value: 'clubs', label: 'Clubs', icon: Building },
+    { value: 'support', label: 'Support', icon: MessageSquare },
+    { value: 'notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
+    { value: 'credits', label: 'Crédits', icon: Coins }
+  ];
 
   return (
-    <div>
-      {videos.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video) => <VideoCard key={video.id} video={video} />)}
-        </div>
-      ) : (
-        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-          <h3 className="text-xl font-semibold">Aucune vidéo pour le moment</h3>
-          <p className="text-gray-500 mt-2">Commencez par enregistrer votre premier match !</p>
-        </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar title="Tableau de bord" />
+
+      {/* Bannière enregistrement actif */}
+      {activeRecording && (
+        <ActiveRecordingBanner
+          recording={activeRecording}
+          onRefresh={checkActiveRecording}
+        />
       )}
 
-      {/* Modal Player Bunny Stream */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-safe">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* === STATISTIQUES (Cartes empilées mobile, grille desktop) === */}
+        <div className="flex flex-col md:grid md:grid-cols-3 gap-4 mb-6">
+          <StatCardModern
+            icon={Video}
+            title="Total Vidéos"
+            value={totalVideos}
+            subtitle="Matchs enregistrés"
+          />
+          <StatCardModern
+            icon={Clock}
+            title="Temps Total"
+            value={formatDuration(totalDuration)}
+            subtitle="Minutes d'enregistrement"
+          />
+          <StatCardModern
+            icon={BarChart}
+            title="Durée Moyenne"
+            value={formatDuration(avgDuration)}
+            subtitle="Par vidéo"
+          />
+        </div>
+
+        {/* === BOUTONS D'ACTION === */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <Button
+            onClick={() => setIsRecordingModalOpen(true)}
+            disabled={activeRecording !== null}
+            className="btn-primary-modern flex-1 sm:flex-none"
+          >
+            <Plus className="h-5 w-5" />
+            {activeRecording ? 'Enregistrement en cours...' : 'Nouvel Enregistrement'}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="btn-secondary-modern flex-1 sm:flex-none"
+          >
+            <QrCode className="h-5 w-5" />
+            Scanner QR Code
+          </Button>
+        </div>
+
+        {/* === NAVIGATION PAR BADGES === */}
+        <NavigationBadges
+          items={navigationItems}
+          activeValue={activeTab}
+          onChange={setActiveTab}
+        />
+
+        {/* === CONTENU DES ONGLETS === */}
+        <div className="mt-6">
+          {/* Onglet Mes Vidéos */}
+          {activeTab === 'videos' && (
+            <div>
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              ) : dashboardData.videos.length > 0 ? (
+                <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dashboardData.videos.map((video) => (
+                    <VideoCardModern
+                      key={video.id}
+                      video={video}
+                      onPlay={handlePlayVideo}
+                      onShare={handleShareVideo}
+                      onDownload={handleDownloadVideo}
+                      onEdit={handleEditVideo}
+                      onDelete={handleDeleteVideo}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-lg bg-white">
+                  <Video className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    Aucune vidéo pour le moment
+                  </h3>
+                  <p className="text-gray-500">
+                    Commencez par enregistrer votre premier match !
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Onglet Clubs */}
+          {activeTab === 'clubs' && (
+            <ClubFollowing onDataChange={loadDashboardData} />
+          )}
+
+          {/* Onglet Support */}
+          {activeTab === 'support' && (
+            <ContactSupport />
+          )}
+
+          {/* Onglet Notifications */}
+          {activeTab === 'notifications' && (
+            <NotificationsTab onCountChange={setNotificationCount} />
+          )}
+
+          {/* Onglet Crédits */}
+          {activeTab === 'credits' && (
+            <CreditSystemDisplay onBuyCreditsClick={() => setIsBuyCreditsModalOpen(true)} />
+          )}
+        </div>
+      </div>
+
+      {/* === MODALS === */}
+      <AdvancedRecordingModal
+        isOpen={isRecordingModalOpen}
+        onClose={() => setIsRecordingModalOpen(false)}
+        onRecordingStarted={() => {
+          setIsRecordingModalOpen(false);
+          checkActiveRecording();
+        }}
+      />
+
+      <BuyCreditsModal
+        isOpen={isBuyCreditsModalOpen}
+        onClose={() => setIsBuyCreditsModalOpen(false)}
+        onSuccess={loadDashboardData}
+      />
+
+
+      {isShareModalOpen && selectedVideo && (
+        <ShareVideoModal
+          isOpen={isShareModalOpen}
+          video={selectedVideo}
+          onClose={() => {
+            setIsShareModalOpen(false);
+            setSelectedVideo(null);
+          }}
+          onSuccess={() => {
+            loadDashboardData();
+            setIsShareModalOpen(false);
+            setSelectedVideo(null);
+          }}
+        />
+      )}
+
+
+      {isEditModalOpen && selectedVideo && (
+        <VideoEditorModal
+          video={selectedVideo}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedVideo(null);
+          }}
+          onSuccess={() => {
+            loadDashboardData();
+            setIsEditModalOpen(false);
+            setSelectedVideo(null);
+          }}
+        />
+      )}
+
       {isPlayerOpen && selectedVideo && (
         <BunnyVideoPlayerModal
           video={selectedVideo}
@@ -200,191 +336,6 @@ const MyVideoSection = ({ onDataChange, onEditVideo, onShareVideo }) => {
           }}
         />
       )}
-    </div>
-  );
-};
-
-// ====================================================================
-// COMPOSANT PRINCIPAL DU TABLEAU DE BORD
-// ====================================================================
-const PlayerDashboard = () => {
-  const { fetchUser } = useAuth();
-  const [stats, setStats] = useState({ totalVideos: 0, totalDuration: 0 });
-  const [loading, setLoading] = useState(true);
-  const [dataVersion, setDataVersion] = useState(0);
-  const [activeRecording, setActiveRecording] = useState(null);
-
-  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
-  const [isBuyCreditsModalOpen, setIsBuyCreditsModalOpen] = useState(false);
-  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
-  const [selectedVideoForEditor, setSelectedVideoForEditor] = useState(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [selectedVideoToShare, setSelectedVideoToShare] = useState(null);
-
-  useEffect(() => {
-    loadDashboardData();
-    checkActiveRecording();
-  }, [dataVersion]);
-
-  // Vérifier périodiquement s'il y a un enregistrement en cours
-  useEffect(() => {
-    const interval = setInterval(checkActiveRecording, 30000); // Toutes les 30 secondes
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      const response = await videoService.getMyVideos();
-      const videos = response.data.videos || [];
-      const totalDuration = videos.reduce((sum, v) => sum + (v.duration || 0), 0);
-      setStats({ totalVideos: videos.length, totalDuration });
-    } catch (error) {
-      console.error("Erreur:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkActiveRecording = async () => {
-    try {
-      const response = await recordingService.getMyActiveRecording();
-      setActiveRecording(response.data.active_recording);
-    } catch (error) {
-      console.error("Erreur lors de la vérification de l'enregistrement actif:", error);
-    }
-  };
-
-  const handleDataChange = () => {
-    setDataVersion(prev => prev + 1);
-    checkActiveRecording(); // Vérifier aussi l'enregistrement actif
-  };
-
-  const handleCreditsUpdated = async () => {
-    await fetchUser();
-    handleDataChange();
-  };
-
-  const handleRecordingStarted = (recordingSession) => {
-    setActiveRecording(recordingSession);
-    handleDataChange();
-  };
-
-  const handleStopRecording = async (recordingId) => {
-    try {
-      await recordingService.stopRecording(recordingId);
-      setActiveRecording(null);
-      handleDataChange();
-    } catch (error) {
-      console.error("Erreur lors de l'arrêt d'enregistrement:", error);
-    }
-  };
-
-  const openEditorModal = (video) => {
-    setSelectedVideoForEditor(video);
-    setIsEditorModalOpen(true);
-  };
-
-  // === FONCTIONNALITÉ SCANNER QR CODE AJOUTÉE ICI ===
-  const handleScanQRCode = () => {
-    // Dans une application réelle, ceci ouvrirait la caméra du téléphone.
-    // Ici, nous simulons la réception d'un QR code.
-    const fakeQRCode = `qr_code_${Math.random().toString(36).substring(2, 11)}`;
-    alert(`Simulation de scan :\n\nQR Code détecté : ${fakeQRCode}\n\nL'enregistrement pourrait maintenant commencer sur le terrain associé.`);
-    // On pourrait ensuite ouvrir le modal d'enregistrement avec le QR code pré-rempli.
-  };
-
-  const formatDuration = (minutes) => {
-    if (!minutes) return '0m';
-
-    // Si c'est déjà en minutes (notre nouveau format)
-    if (minutes < 200) {
-      return `${Math.floor(minutes)}m`;
-    }
-
-    // Si c'est en secondes (ancien format), convertir
-    const convertedMinutes = Math.floor(minutes / 60);
-    return `${convertedMinutes}m`;
-  };
-  const averageDuration = stats.totalVideos > 0 ? stats.totalDuration / stats.totalVideos : 0;
-
-  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-16 w-16 animate-spin" /></div>;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Bandeau d'enregistrement actif */}
-      {activeRecording && (
-        <ActiveRecordingBanner
-          recording={activeRecording}
-          onStop={handleStopRecording}
-        />
-      )}
-
-      <Navbar onBuyCreditsClick={() => setIsBuyCreditsModalOpen(true)} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Bonjour, gérez vos enregistrements !</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard icon={Video} title="Total Vidéos" value={stats.totalVideos} />
-          <StatCard icon={Clock} title="Temps Total Enregistré" value={formatDuration(stats.totalDuration)} />
-          <StatCard icon={BarChart} title="Durée Moyenne" value={formatDuration(averageDuration)} />
-        </div>
-        <Card className="mb-8">
-          <CardHeader><CardTitle>Actions Rapides</CardTitle></CardHeader>
-          <CardContent className="flex space-x-4">
-            <Button
-              onClick={() => setIsRecordingModalOpen(true)}
-              disabled={!!activeRecording} // Désactiver si enregistrement en cours
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {activeRecording ? "Enregistrement en cours..." : "Nouvel Enregistrement"}
-            </Button>
-            {/* On attache la fonction au bouton */}
-            <Button variant="outline" onClick={handleScanQRCode}><QrCode className="h-4 w-4 mr-2" />Scanner QR Code</Button>
-          </CardContent>
-        </Card>
-        <Tabs defaultValue="videos" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="videos">Mes Vidéos</TabsTrigger>
-            <TabsTrigger value="clubs">Clubs</TabsTrigger>
-            <TabsTrigger value="support">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Support
-            </TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="credits">
-              <Coins className="h-4 w-4 mr-2" />
-              Crédits
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="videos" className="mt-6">
-            <MyVideoSection onDataChange={handleDataChange} onEditVideo={openEditorModal} onShareVideo={(video) => { setSelectedVideoToShare(video); setIsShareModalOpen(true); }} />
-          </TabsContent>
-          <TabsContent value="clubs" className="mt-6">
-            <ClubFollowing onFollowChange={handleDataChange} />
-          </TabsContent>
-          <TabsContent value="support" className="mt-6">
-            <ContactSupport />
-          </TabsContent>
-          <TabsContent value="notifications" className="mt-6">
-            <NotificationsTab />
-          </TabsContent>
-          <TabsContent value="credits" className="mt-6">
-            <CreditSystemDisplay onBuyCreditsClick={() => setIsBuyCreditsModalOpen(true)} />
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      <AdvancedRecordingModal
-        isOpen={isRecordingModalOpen}
-        onClose={() => setIsRecordingModalOpen(false)}
-        onRecordingStarted={handleRecordingStarted}
-      />
-      <BuyCreditsModal isOpen={isBuyCreditsModalOpen} onClose={() => setIsBuyCreditsModalOpen(false)} onCreditsUpdated={handleCreditsUpdated} />
-      <VideoEditorModal isOpen={isEditorModalOpen} onClose={() => setIsEditorModalOpen(false)} video={selectedVideoForEditor} />
-      <ShareVideoModal isOpen={isShareModalOpen} onClose={() => { setIsShareModalOpen(false); setSelectedVideoToShare(null); }} video={selectedVideoToShare} />
     </div>
   );
 };

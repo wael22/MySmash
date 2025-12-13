@@ -3,8 +3,8 @@ import { clubService } from '../../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  History, 
+import {
+  History,
   Loader2,
   Heart,
   HeartOff,
@@ -105,26 +105,36 @@ const ClubHistory = () => {
 
   const formatActionDetails = (actionDetails) => {
     if (!actionDetails) return null;
-    
+
     try {
       const details = JSON.parse(actionDetails);
-      
+
       if (details.changes) {
         const changes = Object.entries(details.changes).map(([field, change]) => {
           return `${field}: "${change.old}" → "${change.new}"`;
         }).join(', ');
         return `Modifications: ${changes}`;
       }
-      
+
       if (details.credits_added) {
         return `${details.credits_added} crédits ajoutés (${details.old_balance} → ${details.new_balance})`;
       }
-      
+
       if (details.club_name) {
         return `Club: ${details.club_name}`;
       }
-      
-      return JSON.stringify(details);
+
+      // Formater tous les autres cas de manière lisible
+      const formattedEntries = Object.entries(details)
+        .filter(([key]) => !key.startsWith('_'))
+        .filter(([, value]) => value !== null && value !== undefined)
+        .map(([key, value]) => {
+          const label = key.replace(/_/g, ' ');
+          return `${label}: ${value}`;
+        })
+        .join(' | ');
+
+      return formattedEntries || 'Details non disponibles';
     } catch (e) {
       return actionDetails;
     }
@@ -174,7 +184,7 @@ const ClubHistory = () => {
                   <div className="flex-shrink-0 mt-1">
                     {getActionIcon(entry.action_type)}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant={getActionVariant(entry.action_type)}>
@@ -184,7 +194,7 @@ const ClubHistory = () => {
                         {formatDate(entry.performed_at)}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-gray-400" />
@@ -193,7 +203,7 @@ const ClubHistory = () => {
                           par {entry.performed_by_name}
                         </span>
                       </div>
-                      
+
                       {entry.action_details && (
                         <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
                           {formatActionDetails(entry.action_details)}
@@ -201,7 +211,7 @@ const ClubHistory = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex-shrink-0 text-right">
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Calendar className="h-3 w-3" />
