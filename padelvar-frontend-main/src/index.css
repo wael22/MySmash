@@ -246,6 +246,8 @@ body {
   box-shadow: var(--shadow-lg);
   padding: 8px;
   min-width: 200px;
+  max-height: none;
+  overflow: visible;
 }
 
 .dropdown-item-modern {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,12 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Scissors } from 'lucide-react';
+import VideoClipEditor from './VideoClipEditor';
 
 export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
   const iframeRef = useRef(null);
+  const [clipEditorOpen, setClipEditorOpen] = useState(false);
 
   // Debug des données vidéo reçues
   useEffect(() => {
@@ -113,14 +115,25 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
             <DialogTitle className="text-xl font-semibold">
               {video.title || `Match du ${new Date(video.recordedAt).toLocaleDateString()}`}
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setClipEditorOpen(true)}
+                className="gap-2"
+              >
+                <Scissors className="h-4 w-4" />
+                Créer un Clip
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -142,6 +155,17 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
           />
         </div>
       </DialogContent>
+
+      {/* Modal de création de clip */}
+      <VideoClipEditor
+        isOpen={clipEditorOpen}
+        onClose={() => setClipEditorOpen(false)}
+        video={video}
+        onClipCreated={(clip) => {
+          console.log('✂️ Clip créé:', clip);
+          setClipEditorOpen(false);
+        }}
+      />
     </Dialog>
   );
 }

@@ -42,6 +42,8 @@ from .routes.highlights import highlights_bp  # 🆕 Highlights generation
 from .routes.support import support_bp  # 🆕 Support messages
 from .routes.notifications import notifications_bp  # 🆕 Notifications system
 from .routes.video_sharing_routes import video_sharing_bp  # 🆕 Video sharing between users
+from .routes.analytics_routes import analytics_bp  # 🆕 Analytics dashboard
+from .routes.clip_routes import clip_bp  # 🆕 Manual clip creation and social sharing
 
 def create_app(config_name=None):
     """
@@ -114,6 +116,8 @@ def create_app(config_name=None):
     app.register_blueprint(system_bp, url_prefix='/api/system')
     app.register_blueprint(highlights_bp)  # 🆕 Highlights (prefix in blueprint)
     app.register_blueprint(video_sharing_bp, url_prefix='/api/videos')  # 🆕 Video sharing
+    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')  # 🆕 Analytics dashboard
+    app.register_blueprint(clip_bp)  # 🆕 Manual clips (prefix in blueprint)
     app.register_blueprint(password_reset_bp)
     # Frontend blueprint en dernier pour éviter d'intercepter les routes API
     app.register_blueprint(frontend_bp)

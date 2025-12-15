@@ -119,6 +119,55 @@ class BunnyConfig:
     def get_video_url(cls, config: Dict[str, Any], video_id: str) -> str:
         """Construit l'URL de visualisation d'une vidéo"""
         return f"https://{config['cdn_hostname']}/{video_id}/play.mp4"
+    
+    @classmethod
+    def generate_signed_url(cls, config: Dict[str, Any], video_id: str, 
+                           expiration_time: int = 3600, 
+                           security_key: str = None) -> str:
+        """
+        Génère une URL signée pour le téléchargement sécurisé depuis Bunny CDN
+        
+        Args:
+            config: Configuration Bunny
+            video_id: ID de la vidéo Bunny
+            expiration_time: Durée de validité en secondes (défaut: 1 heure)
+            security_key: Clé de sécurité Token Authentication (optionnel)
+                         Si None, essaie BUNNY_TOKEN_SECURITY_KEY depuis l'environnement
+        
+        Returns:
+            URL signée avec token d'authentification
+        """
+        import hashlib
+        import time
+        from urllib.parse import quote
+        
+        # Récupérer la clé de sécurité
+        if security_key is None:
+            security_key = os.environ.get('BUNNY_TOKEN_SECURITY_KEY', '')
+        
+        # Si pas de clé de sécurité, retourner l'URL sans signature
+        if not security_key:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("⚠️ BUNNY_TOKEN_SECURITY_KEY not configured, using unsigned URL")
+            return cls.get_video_url(config, video_id)
+        
+        # Calculer le timestamp d'expiration
+        expires = int(time.time()) + expiration_time
+        
+        # Construire l'URL de base
+        base_path = f"/{video_id}/play.mp4"
+        
+        # Créer la chaîne à signer: security_key + path + expires
+        sign_string = f"{security_key}{base_path}{expires}"
+        
+        # Générer le hash MD5 (Bunny utilise MD5 pour les tokens)
+        token = hashlib.md5(sign_string.encode()).hexdigest()
+        
+        # Construire l'URL signée
+        signed_url = f"https://{config['cdn_hostname']}{base_path}?token={token}&expires={expires}"
+        
+        return signed_url
 
 
 # Configuration globale chargée au démarrage

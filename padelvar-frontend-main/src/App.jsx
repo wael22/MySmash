@@ -8,6 +8,7 @@ import PlayerDashboard from './components/player/PlayerDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ClubDashboard from './components/club/ClubDashboard';
 import ProfilePage from './pages/ProfilePage';
+import MyClipsPage from './pages/MyClipsPage';  // 🆕 Page des clips
 import GoogleAuthCallback from './components/GoogleAuthCallback';
 // Importation dynamique des pages pour éviter les erreurs de chargement
 import { Suspense, lazy } from 'react';
@@ -76,6 +77,9 @@ function App() {
 
             {/* Page profil protégée */}
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+            {/* Page clips protégée */}
+            <Route path="/my-clips" element={<ProtectedRoute requiredRole="player"><MyClipsPage /></ProtectedRoute>} />
 
             {/* Redirection par défaut */}
             <Route path="/" element={<Navigate to="/login" replace />} />

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { Play, Share2, Download, Edit2, Trash2, MoreVertical, Share } from 'lucide-react';
+import { Play, Share2, Download, Edit2, Trash2, MoreVertical, Share, Scissors } from 'lucide-react';
 
 /**
  * VideoCardModern - Carte vidéo moderne avec image pleine largeur
@@ -13,6 +13,7 @@ const VideoCardModern = ({
     onDownload,
     onEdit,
     onDelete,
+    onCreateClip,  // 🆕 Nouveau handler
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
@@ -55,7 +56,7 @@ const VideoCardModern = ({
     };
 
     return (
-        <div className="card-modern-compact overflow-hidden animate-fade-in">
+        <div className="card-modern-compact overflow-visible animate-fade-in">
             {/* Image avec overlays */}
             <div className="relative aspect-video bg-gray-200 rounded-lg overflow-hidden mb-4">
                 {video.thumbnail_url ? (
@@ -106,7 +107,7 @@ const VideoCardModern = ({
 
                         {/* Dropdown menu */}
                         {menuOpen && (
-                            <div className="dropdown-menu-modern absolute right-0 top-full mt-1 z-10">
+                            <div className="dropdown-menu-modern absolute right-0 top-full mt-1 z-50">
                                 <button
                                     onClick={() => {
                                         onPlay(video);
@@ -141,6 +142,20 @@ const VideoCardModern = ({
                                     >
                                         <Download className="h-4 w-4" />
                                         <span>Télécharger</span>
+                                    </button>
+                                )}
+
+                                {/* 🆕 AJOUTER OPTION CRÉER UN CLIP */}
+                                {!video.is_shared && onCreateClip && (
+                                    <button
+                                        onClick={() => {
+                                            onCreateClip(video);
+                                            setMenuOpen(false);
+                                        }}
+                                        className="dropdown-item-modern w-full"
+                                    >
+                                        <Scissors className="h-4 w-4" />
+                                        <span>Créer un Clip</span>
                                     </button>
                                 )}
 
@@ -232,6 +247,7 @@ VideoCardModern.propTypes = {
     onDownload: PropTypes.func,
     onEdit: PropTypes.func,
     onDelete: PropTypes.func,
+    onCreateClip: PropTypes.func,  // 🆕 Nouveau prop
 };
 
 export default VideoCardModern;

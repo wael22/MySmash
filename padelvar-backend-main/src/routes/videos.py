@@ -207,3 +207,23 @@ def scan_qr_code():
     return api_response({'court': court.to_dict(), 'club': club.to_dict() if club else None, 'camera_url': court.camera_url, 'can_record': True}, 'QR scanné')
 
 # Note: Ancien bloc dupliqué supprimé pour éviter conflits.
+
+@videos_bp.route('/<int:video_id>/overlays', methods=['GET'])
+def get_video_overlays(video_id):
+    """Récupérer les overlays actifs pour une vidéo"""
+    video = Video.query.get_or_404(video_id)
+    
+    # Trouver le club associé à la vidéo via le terrain
+    if not video.court or not video.court.club_id:
+        return jsonify({'overlays': []}), 200
+        
+    club = Club.query.get(video.court.club_id)
+    if not club:
+        return jsonify({'overlays': []}), 200
+        
+    # Retourner les overlays actifs du club
+    # Note: on utilise getattr pour éviter les erreurs si la relation n'est pas encore chargée
+    overlays = getattr(club, 'overlays', [])
+    active_overlays = [o.to_dict() for o in overlays if o.is_active]
+    
+    return jsonify({'overlays': active_overlays}), 200

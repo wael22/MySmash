@@ -1,7 +1,7 @@
 # padelvar-backend/src/routes/admin.py
 
 from flask import Blueprint, request, jsonify, session
-from src.models.user import db, User, Club, Court, Video, UserRole, ClubActionHistory, RecordingSession
+from src.models.user import db, User, Club, Court, Video, UserRole, ClubActionHistory, RecordingSession, ClubOverlay
 from src.models.system_configuration import SystemConfiguration, ConfigType
 from src.models.notification import Notification, NotificationType
 from werkzeug.security import generate_password_hash
@@ -2477,3 +2477,112 @@ def delete_credit_package(package_id):
         logger.error(f'Erreur lors de la suppression du package: {e}')
         db.session.rollback()
         return jsonify({'error': 'Erreur serveur'}), 500
+        return jsonify({"error": f"Erreur lors de la suppression: {str(e)}"}), 500
+
+
+# --- UTILITAIRES UPLOAD ---
+
+@admin_bp.route("/uploads/image", methods=["POST"])
+def upload_image():
+    if not require_super_admin(): return jsonify({"error": "Accès non autorisé"}), 403
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "Aucun fichier fourni"}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Nom de fichier vide"}), 400
+        
+    if file:
+        try:
+            # Sécuriser le nom de fichier
+            from werkzeug.utils import secure_filename
+            import os
+            
+            filename = secure_filename(file.filename)
+            # Ajouter un UUID pour éviter les collisions
+            unique_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+            
+            # Chemin de sauvegarde (assumant src/static/overlays existe)
+            upload_folder = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'overlays')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            file_path = os.path.join(upload_folder, unique_filename)
+            file.save(file_path)
+            
+            # Retourner l'URL relative
+            url = f"/static/overlays/{unique_filename}"
+            return jsonify({"url": url}), 201
+            
+        except Exception as e:
+            return jsonify({"error": f"Erreur upload: {str(e)}"}), 500
+
+# --- GESTION DES OVERLAYS (SUPER ADMIN) ---
+
+@admin_bp.route("/clubs/<int:club_id>/overlays", methods=["GET"])
+def get_club_overlays(club_id):
+    if not require_super_admin(): return jsonify({"error": "Accès non autorisé"}), 403
+    club = Club.query.get_or_404(club_id)
+    return jsonify({"overlays": [overlay.to_dict() for overlay in club.overlays]}), 200
+
+@admin_bp.route("/clubs/<int:club_id>/overlays", methods=["POST"])
+def create_club_overlay(club_id):
+    if not require_super_admin(): return jsonify({"error": "Accès non autorisé"}), 403
+    club = Club.query.get_or_404(club_id)
+    data = request.get_json()
+    
+    try:
+        new_overlay = ClubOverlay(
+            club_id=club.id,
+            name=data.get("name", "Overlay"),
+            image_url=data["image_url"],
+            position_x=float(data.get("position_x", 5)),
+            position_y=float(data.get("position_y", 5)),
+            width=float(data.get("width", 10)),
+            opacity=float(data.get("opacity", 1.0)),
+            is_active=data.get("is_active", True)
+        )
+        db.session.add(new_overlay)
+        db.session.commit()
+        return jsonify({"message": "Overlay créé", "overlay": new_overlay.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Erreur lors de la création de l'overlay: {str(e)}"}), 500
+
+@admin_bp.route("/clubs/<int:club_id>/overlays/<int:overlay_id>", methods=["PUT"])
+def update_club_overlay(club_id, overlay_id):
+    if not require_super_admin(): return jsonify({"error": "Accès non autorisé"}), 403
+    overlay = ClubOverlay.query.get_or_404(overlay_id)
+    if overlay.club_id != club_id:
+        return jsonify({"error": "Overlay n'appartient pas à ce club"}), 400
+        
+    data = request.get_json()
+    try:
+        if "name" in data: overlay.name = data["name"]
+        if "image_url" in data: overlay.image_url = data["image_url"]
+        if "position_x" in data: overlay.position_x = float(data["position_x"])
+        if "position_y" in data: overlay.position_y = float(data["position_y"])
+        if "width" in data: overlay.width = float(data["width"])
+        if "opacity" in data: overlay.opacity = float(data["opacity"])
+        if "is_active" in data: overlay.is_active = data["is_active"]
+        
+        db.session.commit()
+        return jsonify({"message": "Overlay mis à jour", "overlay": overlay.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Erreur lors de la mise à jour: {str(e)}"}), 500
+
+@admin_bp.route("/clubs/<int:club_id>/overlays/<int:overlay_id>", methods=["DELETE"])
+def delete_club_overlay(club_id, overlay_id):
+    if not require_super_admin(): return jsonify({"error": "Accès non autorisé"}), 403
+    overlay = ClubOverlay.query.get_or_404(overlay_id)
+    if overlay.club_id != club_id:
+        return jsonify({"error": "Overlay n'appartient pas à ce club"}), 400
+        
+    try:
+        db.session.delete(overlay)
+        db.session.commit()
+        return jsonify({"message": "Overlay supprimé"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Erreur lors de la suppression"}), 500

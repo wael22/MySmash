@@ -113,6 +113,37 @@ class Club(db.Model):
             'id': self.id, 'name': self.name, 'address': self.address,
             'phone_number': self.phone_number, 'email': self.email,
             'credits_balance': self.credits_balance,  # Inclure le solde de crédits
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'overlays': [overlay.to_dict() for overlay in self.overlays] if hasattr(self, 'overlays') else []
+        }
+
+class ClubOverlay(db.Model):
+    __tablename__ = 'club_overlay'
+    id = db.Column(db.Integer, primary_key=True)
+    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=True)  # Nom descriptif (ex: Logo Principal)
+    image_url = db.Column(db.String(255), nullable=False)
+    position_x = db.Column(db.Float, default=5, nullable=False)  # Pourcentage X (0-100)
+    position_y = db.Column(db.Float, default=5, nullable=False)  # Pourcentage Y (0-100)
+    width = db.Column(db.Float, default=10, nullable=False)      # Pourcentage Largeur (relative au container)
+    opacity = db.Column(db.Float, default=1.0, nullable=False)   # Opacité (0.0-1.0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relation
+    club = db.relationship('Club', backref=db.backref('overlays', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'club_id': self.club_id,
+            'name': self.name,
+            'image_url': self.image_url,
+            'position_x': self.position_x,
+            'position_y': self.position_y,
+            'width': self.width,
+            'opacity': self.opacity,
+            'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -172,7 +203,8 @@ class Video(db.Model):
             "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "cdn_migrated_at": self.cdn_migrated_at.isoformat() if self.cdn_migrated_at else None,
-            "bunny_video_id": self.bunny_video_id
+            "bunny_video_id": self.bunny_video_id,
+            "club_id": self.court.club_id if self.court else None
         }
 
 class HighlightVideo(db.Model):
@@ -255,6 +287,64 @@ class HighlightJob(db.Model):
             "completed_at": self.completed_at.isoformat() if self.completed_at else None
         }
 
+class UserClip(db.Model):
+    """Clip vidéo créé manuellement par l'utilisateur"""
+    __tablename__ = 'user_clip'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Métadonnées du clip
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    
+    # Timing (en secondes)
+    start_time = db.Column(db.Float, nullable=False)  # Position de début dans la vidéo originale
+    end_time = db.Column(db.Float, nullable=False)    # Position de fin dans la vidéo originale
+    duration = db.Column(db.Integer, nullable=True)   # Durée du clip en secondes
+    
+    # Fichiers
+    file_url = db.Column(db.String(500), nullable=True)        # URL du clip sur Bunny CDN
+    thumbnail_url = db.Column(db.String(500), nullable=True)   # URL de la miniature
+    bunny_video_id = db.Column(db.String(100), nullable=True)  # ID Bunny Stream
+    
+    # Statut de traitement
+    status = db.Column(db.String(50), default='pending')  # pending, processing, completed, failed
+    error_message = db.Column(db.Text, nullable=True)
+    
+    # Statistiques de partage
+    share_count = db.Column(db.Integer, default=0)
+    download_count = db.Column(db.Integer, default=0)
+    
+    # Dates
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relations
+    video = db.relationship('Video', backref='user_clips', foreign_keys=[video_id])
+    user = db.relationship('User', backref='created_clips')
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "video_id": self.video_id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "description": self.description,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "duration": self.duration,
+            "file_url": self.file_url,
+            "thumbnail_url": self.thumbnail_url,
+            "bunny_video_id": self.bunny_video_id,
+            "status": self.status,
+            "error_message": self.error_message,
+            "share_count": self.share_count,
+            "download_count": self.download_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None
+        }
 
 class RecordingSession(db.Model):
     """Modèle pour gérer les sessions d'enregistrement en cours"""

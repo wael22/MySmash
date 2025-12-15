@@ -1,0 +1,391 @@
+"""
+Service pour créer des clips vidéo manuellement
+Utilise FFmpeg pour découper les vidéos et Bunny CDN pour le stockage
+"""
+
+import os
+import subprocess
+import tempfile
+import logging
+from datetime import datetime
+from typing import Dict, Optional
+from src.models.database import db
+from src.models.user import UserClip, Video
+from src.config.bunny_config import BUNNY_CONFIG
+import requests
+
+logger = logging.getLogger(__name__)
+
+
+class ManualClipService:
+    """Service pour gérer la création manuelle de clips vidéo"""
+    
+    def __init__(self):
+        self.bunny_api_key = BUNNY_CONFIG['api_key']
+        self.bunny_library_id = BUNNY_CONFIG['library_id']
+        self.bunny_cdn_hostname = BUNNY_CONFIG['cdn_hostname']
+        self.temp_dir = tempfile.gettempdir()
+    
+    def create_clip(
+        self,
+        video_id: int,
+        user_id: int,
+        start_time: float,
+        end_time: float,
+        title: str,
+        description: Optional[str] = None
+    ) -> UserClip:
+        """
+        Crée un clip à partir d'une vidéo existante
+        
+        Args:
+            video_id: ID de la vidéo source
+            user_id: ID de l'utilisateur créant le clip
+            start_time: Temps de début en secondes
+            end_time: Temps de fin en secondes
+            title: Titre du clip
+            description: Description optionnelle
+        
+        Returns:
+            UserClip: Le clip créé
+        """
+        # Vérifier que la vidéo existe
+        video = Video.query.get(video_id)
+        if not video:
+            raise ValueError("Video not found")
+        
+        # Vérifier que l'utilisateur est le propriétaire
+        if video.user_id != user_id:
+            raise ValueError("User does not own this video")
+        
+        # Valider les timestamps
+        if start_time < 0 or end_time <= start_time:
+            raise ValueError("Invalid time range")
+        
+        if video.duration and end_time > video.duration:
+            raise ValueError(f"End time exceeds video duration ({video.duration}s)")
+        
+        # Créer l'enregistrement du clip
+        clip = UserClip(
+            video_id=video_id,
+            user_id=user_id,
+            title=title,
+            description=description,
+            start_time=start_time,
+            end_time=end_time,
+            duration=int(end_time - start_time),
+            status='pending'
+        )
+        
+        db.session.add(clip)
+        db.session.commit()
+        
+        logger.info(f"Created clip {clip.id} for video {video_id}")
+        
+        return clip
+    
+    def process_clip(self, clip_id: int) -> bool:
+        """
+        Traite un clip: télécharge la vidéo source, découpe, upload
+        
+        Args:
+            clip_id: ID du clip à traiter
+        
+        Returns:
+            bool: True si succès, False sinon
+        """
+        clip = UserClip.query.get(clip_id)
+        if not clip:
+            logger.error(f"Clip {clip_id} not found")
+            return False
+        
+        try:
+            clip.status = 'processing'
+            db.session.commit()
+            
+            
+            # 1. Télécharger la vidéo source
+            video = clip.video
+            
+            # Si c'est une vidéo Bunny Stream, télécharger via l'API
+            if video.bunny_video_id:
+                logger.info(f"Downloading Bunny Stream video {video.bunny_video_id} via API")
+                source_path = self._download_bunny_video(video.bunny_video_id)
+            elif video.file_url:
+                logger.info(f"Downloading source video from {video.file_url}")
+                source_path = self._download_video(video.file_url)
+            else:
+                raise ValueError("Source video has no file URL or Bunny video ID")
+            
+            # 2. Découper la vidéo avec FFmpeg
+            logger.info(f"Cutting clip from {clip.start_time}s to {clip.end_time}s")
+            clip_path = self._cut_video(source_path, clip.start_time, clip.end_time)
+            
+            # 3. Générer une miniature
+            logger.info("Generating thumbnail")
+            thumbnail_path = self._generate_thumbnail(clip_path)
+            
+            # 4. Upload vers Bunny CDN
+            logger.info("Uploading to Bunny CDN")
+            clip_url, bunny_video_id = self._upload_to_bunny(
+                clip_path,
+                f"clip_{clip.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+            )
+            
+            # 5. Upload de la miniature
+            thumbnail_url = self._upload_thumbnail_to_bunny(
+                thumbnail_path,
+                f"clip_{clip.id}_thumb.jpg"
+            )
+            
+            # 6. Mettre à jour le clip
+            clip.file_url = clip_url
+            clip.thumbnail_url = thumbnail_url
+            clip.bunny_video_id = bunny_video_id
+            clip.status = 'completed'
+            clip.completed_at = datetime.utcnow()
+            db.session.commit()
+            
+            # 7. Nettoyer les fichiers temporaires
+            self._cleanup_files([source_path, clip_path, thumbnail_path])
+            
+            logger.info(f"Clip {clip_id} processed successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing clip {clip_id}: {str(e)}")
+            clip.status = 'failed'
+            clip.error_message = str(e)
+            db.session.commit()
+            return False
+    
+    def _download_bunny_video(self, video_id: str) -> str:
+        """
+        Télécharge une vidéo depuis Bunny Stream via l'API
+        Utilise l'API Key pour l'authentification (pas de 403)
+        """
+        # 1. Récupérer les informations de la vidéo via l'API
+        api_url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}"
+        headers = {'AccessKey': self.bunny_api_key}
+        
+        logger.info(f"Fetching video info from Bunny API: {video_id}")
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        
+        video_info = response.json()
+        
+        # 2. Construire l'URL de téléchargement MP4
+        # Bunny Stream stocke les vidéos encodées, on prend la meilleure qualité
+        # L'URL de téléchargement direct nécessite l'API key
+        download_url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}/mp4/original"
+        
+        logger.info(f"Downloading video from Bunny API")
+        
+        # 3. Télécharger avec l'API key dans les headers
+        response = requests.get(download_url, headers=headers, stream=True)
+        response.raise_for_status()
+        
+        # 4. Sauvegarder dans un fichier temporaire
+        temp_file = os.path.join(self.temp_dir, f"source_{datetime.now().timestamp()}.mp4")
+        
+        with open(temp_file, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        logger.info(f"Downloaded Bunny video to {temp_file}")
+        return temp_file
+    
+    def _download_video(self, url: str) -> str:
+        """Télécharge une vidéo depuis une URL (fallback pour URLs non-Bunny)"""
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        
+        temp_file = os.path.join(self.temp_dir, f"source_{datetime.now().timestamp()}.mp4")
+        
+        with open(temp_file, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        return temp_file
+    
+    def _cut_video(self, source_path: str, start_time: float, end_time: float) -> str:
+        """Découpe une vidéo avec FFmpeg"""
+        output_path = os.path.join(
+            self.temp_dir,
+            f"clip_{datetime.now().timestamp()}.mp4"
+        )
+        
+        # Commande FFmpeg pour découper (utilise -c copy pour éviter le ré-encodage)
+        cmd = [
+            'ffmpeg',
+            '-i', source_path,
+            '-ss', str(start_time),
+            '-to', str(end_time),
+            '-c', 'copy',  # Copie sans ré-encodage (plus rapide)
+            '-avoid_negative_ts', 'make_zero',
+            output_path
+        ]
+        
+        logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.error(f"FFmpeg error: {result.stderr}")
+            raise RuntimeError(f"FFmpeg failed: {result.stderr}")
+        
+        return output_path
+    
+    def _generate_thumbnail(self, video_path: str) -> str:
+        """Génère une miniature à partir de la vidéo"""
+        thumbnail_path = os.path.join(
+            self.temp_dir,
+            f"thumb_{datetime.now().timestamp()}.jpg"
+        )
+        
+        # Extraire une frame à 1 seconde
+        cmd = [
+            'ffmpeg',
+            '-i', video_path,
+            '-ss', '1',
+            '-vframes', '1',
+            '-q:v', '2',  # Qualité
+            thumbnail_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.warning(f"Thumbnail generation failed: {result.stderr}")
+            # Utiliser une image par défaut
+            thumbnail_path = None
+        
+        return thumbnail_path
+    
+    def _upload_to_bunny(self, file_path: str, filename: str) -> tuple:
+        """
+        Upload une vidéo vers Bunny Stream
+        
+        Returns:
+            tuple: (url, video_id)
+        """
+        # Pour Bunny Stream, on utilise leur API d'upload
+        # Documentation: https://docs.bunny.net/reference/video_createvideo
+        
+        url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos"
+        
+        # 1. Créer la vidéo
+        headers = {
+            'AccessKey': self.bunny_api_key,
+            'Content-Type': 'application/json'
+        }
+        
+        data = {
+            'title': filename
+        }
+        
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        
+        video_data = response.json()
+        video_id = video_data['guid']
+        
+        # 2. Upload le fichier
+        upload_url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}"
+        
+        with open(file_path, 'rb') as f:
+            upload_response = requests.put(
+                upload_url,
+                headers={'AccessKey': self.bunny_api_key},
+                data=f
+            )
+            upload_response.raise_for_status()
+        
+        # 3. Construire l'URL de lecture
+        video_url = f"https://{self.bunny_cdn_hostname}/{video_id}/playlist.m3u8"
+        
+        return video_url, video_id
+    
+    def _upload_thumbnail_to_bunny(self, file_path: str, filename: str) -> Optional[str]:
+        """Upload une miniature vers Bunny Storage"""
+        if not file_path:
+            return None
+        
+        # Pour simplifier, on peut utiliser le storage Bunny ou générer l'URL depuis Stream
+        # Ici on retourne None pour l'instant, Bunny Stream génère automatiquement des thumbnails
+        return None
+    
+    def _cleanup_files(self, file_paths: list):
+        """Nettoie les fichiers temporaires"""
+        for path in file_paths:
+            try:
+                if path and os.path.exists(path):
+                    os.remove(path)
+                    logger.debug(f"Cleaned up {path}")
+            except Exception as e:
+                logger.warning(f"Could not delete {path}: {e}")
+    
+    def delete_clip(self, clip_id: int, user_id: int) -> bool:
+        """
+        Supprime un clip
+        
+        Args:
+            clip_id: ID du clip à supprimer
+            user_id: ID de l'utilisateur (pour vérification)
+        
+        Returns:
+            bool: True si succès
+        """
+        clip = UserClip.query.get(clip_id)
+        
+        if not clip:
+            raise ValueError("Clip not found")
+        
+        if clip.user_id != user_id:
+            raise ValueError("User does not own this clip")
+        
+        # Supprimer de Bunny CDN si le fichier existe
+        if clip.bunny_video_id:
+            try:
+                self._delete_from_bunny(clip.bunny_video_id)
+            except Exception as e:
+                logger.warning(f"Could not delete from Bunny: {e}")
+        
+        # Supprimer de la base de données
+        db.session.delete(clip)
+        db.session.commit()
+        
+        logger.info(f"Deleted clip {clip_id}")
+        return True
+    
+    def _delete_from_bunny(self, video_id: str):
+        """Supprime une vidéo de Bunny Stream"""
+        url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}"
+        
+        response = requests.delete(
+            url,
+            headers={'AccessKey': self.bunny_api_key}
+        )
+        response.raise_for_status()
+    
+    def get_user_clips(self, user_id: int, video_id: Optional[int] = None) -> list:
+        """
+        Récupère les clips d'un utilisateur
+        
+        Args:
+            user_id: ID de l'utilisateur
+            video_id: Optionnel, filtrer par vidéo
+        
+        Returns:
+            list: Liste des clips
+        """
+        query = UserClip.query.filter_by(user_id=user_id)
+        
+        if video_id:
+            query = query.filter_by(video_id=video_id)
+        
+        return query.order_by(UserClip.created_at.desc()).all()
+
+
+# Instance globale
+manual_clip_service = ManualClipService()

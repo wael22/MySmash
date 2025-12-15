@@ -18,9 +18,11 @@ import CreditSystemDisplay from '@/components/player/CreditSystemDisplay';
 import ContactSupport from './ContactSupport';
 import NotificationsTab from './NotificationsTab';
 import ShareVideoModal from './ShareVideoModal';
+import ClipsList from '@/components/player/ClipsList';  // 🆕 Liste des clips
+import VideoClipEditor from '@/components/player/VideoClipEditor';  // 🆕 Éditeur de clips
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Video, Clock, BarChart, Plus, QrCode, Loader2, Building, MessageSquare, Bell, Coins } from 'lucide-react';
+import { Video, Clock, BarChart, Plus, QrCode, Loader2, Building, MessageSquare, Bell, Coins, Scissors } from 'lucide-react';
 
 const PlayerDashboard = () => {
   const { user } = useAuth();
@@ -39,6 +41,7 @@ const PlayerDashboard = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isClipEditorOpen, setIsClipEditorOpen] = useState(false);  // 🆕 Modal clip editor
   const [selectedVideo, setSelectedVideo] = useState(null);
 
   // Enregistrement actif
@@ -141,9 +144,25 @@ const PlayerDashboard = () => {
     }
   };
 
+  // 🆕 Handler pour créer un clip
+  const handleCreateClip = (video) => {
+    const videoData = {
+      id: video.id,
+      title: video.title || `Match du ${new Date(video.recorded_at).toLocaleDateString()}`,
+      bunny_video_id: video.bunny_video_id,
+      file_url: video.file_url || video.bunny_video_url,
+      thumbnail_url: video.thumbnail_url,
+      duration: video.duration,
+      recorded_at: video.recorded_at,
+    };
+    setSelectedVideo(videoData);
+    setIsClipEditorOpen(true);
+  };
+
   // Items de navigation
   const navigationItems = [
     { value: 'videos', label: 'Mes Vidéos', icon: Video },
+    { value: 'clips', label: 'Mes Clips', icon: Scissors },  // 🆕 Nouvel onglet
     { value: 'clubs', label: 'Clubs', icon: Building },
     { value: 'support', label: 'Support', icon: MessageSquare },
     { value: 'notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
@@ -238,6 +257,7 @@ const PlayerDashboard = () => {
                       onDownload={handleDownloadVideo}
                       onEdit={handleEditVideo}
                       onDelete={handleDeleteVideo}
+                      onCreateClip={handleCreateClip}  // 🆕 Handler pour créer un clip
                     />
                   ))}
                 </div>
@@ -253,6 +273,11 @@ const PlayerDashboard = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Onglet Clips */}
+          {activeTab === 'clips' && (
+            <ClipsList onRefresh={() => console.log('Clips rafraîchis')} />
           )}
 
           {/* Onglet Clubs */}
@@ -333,6 +358,27 @@ const PlayerDashboard = () => {
           onClose={() => {
             setIsPlayerOpen(false);
             setSelectedVideo(null);
+          }}
+        />
+      )}
+
+      {/* 🆕 Modal de création de clips */}
+      {isClipEditorOpen && selectedVideo && (
+        <VideoClipEditor
+          isOpen={isClipEditorOpen}
+          onClose={() => {
+            setIsClipEditorOpen(false);
+            setSelectedVideo(null);
+          }}
+          video={selectedVideo}
+          onClipCreated={(clip) => {
+            console.log('✂️ Clip créé:', clip);
+            setIsClipEditorOpen(false);
+            setSelectedVideo(null);
+            // Rafraîchir l'onglet clips si actif
+            if (activeTab === 'clips') {
+              loadDashboardData();
+            }
           }}
         />
       )}

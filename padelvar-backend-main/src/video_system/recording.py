@@ -63,7 +63,7 @@ class VideoRecorder:
         duration_seconds: int
     ) -> bool:
         """
-        Démarrer un enregistrement en utilisant la logique de référence
+        Démarrer un enregistrement avec support des overlays FFmpeg
         """
         session_id = session.session_id
         
@@ -94,20 +94,107 @@ class VideoRecorder:
             logger.error(f"❌ Erreur FFmpeg: {e}")
             return False
 
-        # 3. Construire la commande (Style référence)
+        # 3. Récupérer les overlays actifs pour le club
+        overlays = []
+        overlay_paths = []
+        filter_complex_parts = []
+        
+        try:
+            from ..models.user import ClubOverlay
+            overlays = ClubOverlay.query.filter_by(
+                club_id=session.club_id,
+                is_active=True
+            ).all()
+            
+            if overlays:
+                logger.info(f"🎨 {len(overlays)} overlay(s) actif(s) pour club {session.club_id}")
+                
+                # Préparer les chemins des overlays
+                for overlay in overlays:
+                    # Convertir l'URL relative en chemin absolu
+                    if overlay.image_url.startswith('/static/'):
+                        # Enlever /static/ et construire le chemin absolu
+                        rel_path = overlay.image_url.replace('/static/', '')
+                        abs_path = Path(__file__).parent.parent / 'static' / rel_path
+                    else:
+                        abs_path = Path(overlay.image_url)
+                    
+                    if abs_path.exists():
+                        overlay_paths.append(str(abs_path))
+                        logger.info(f"  ✓ Overlay: {overlay.name} -> {abs_path}")
+                    else:
+                        logger.warning(f"  ⚠️ Overlay image not found: {abs_path}")
+        except ImportError:
+            logger.warning("ClubOverlay model not available, skipping overlays")
+        except Exception as e:
+            logger.error(f"❌ Error fetching overlays: {e}")
+            # Continue without overlays if there's an error
+
+        # 4. Construire la commande FFmpeg
+        # Base command sans overlays
         cmd = [
             ffmpeg_exec,
             "-hide_banner",
             "-loglevel", "info",
-            "-i", input_url,
+            "-i", input_url
+        ]
+        
+        # Ajouter les overlays comme inputs supplémentaires avec -loop 1
+        # pour que l'image persiste durant toute la vidéo
+        for overlay_path in overlay_paths:
+            cmd.extend(["-loop", "1", "-i", overlay_path])
+        
+        # Construire le filter_complex si on a des overlays
+        if overlay_paths:
+            # Pour FFmpeg, on construit une chaîne d'overlays avec gestion de l'opacité
+            # Exemple: [1:v]format=rgba,colorchannelmixer=aa=0.5[ov1];[0:v][ov1]overlay=...
+            
+            filter_chain = ""
+            current_main_stream = "[0:v]"
+            
+            for i, overlay in enumerate(overlays[:len(overlay_paths)], start=1):
+                # 1. Préparer l'input de l'overlay (gérer opacité)
+                overlay_input_tag = f"[{i}:v]"
+                
+                # Vérifier l'opacité (défaut 1.0)
+                opacity = getattr(overlay, 'opacity', 1.0)
+                
+                if opacity < 0.99:  # Si opacité < 100%
+                    # Créer une version transparente de l'overlay
+                    processed_overlay_tag = f"[ov{i}]"
+                    # format=rgba est crucial pour avoir le canal alpha à modifier
+                    filter_chain += f"{overlay_input_tag}format=rgba,colorchannelmixer=aa={opacity}{processed_overlay_tag};"
+                    overlay_input_tag = processed_overlay_tag
+                
+                # 2. Calculer position
+                x_expr = f"W*{overlay.position_x/100}"
+                y_expr = f"H*{overlay.position_y/100}"
+                
+                # shortest=1 assure que l'overlay persiste pour toute la durée du flux vidéo
+                overlay_params = f"overlay={x_expr}:{y_expr}:shortest=1"
+                
+                if i == len(overlay_paths):
+                    # Dernier overlay
+                    filter_chain += f"{current_main_stream}{overlay_input_tag}{overlay_params}"
+                else:
+                    # Overlay intermédiaire
+                    next_stream = f"[tmp{i}]"
+                    filter_chain += f"{current_main_stream}{overlay_input_tag}{overlay_params}{next_stream};"
+                    current_main_stream = next_stream
+            
+            cmd.extend(["-filter_complex", filter_chain])
+            logger.info(f"🎨 Filter complex: {filter_chain}")
+        
+        # Paramètres de sortie communs
+        cmd.extend([
             "-t", str(duration_seconds),
             "-c:v", "libx264",
             "-preset", VideoConfig.VIDEO_PRESET,
             "-crf", str(VideoConfig.VIDEO_CRF),
-            "-c:a", "aac",  # Tenter d'inclure l'audio comme dans la référence
+            "-c:a", "aac",
             "-y",
             str(output_path)
-        ]
+        ])
         
         logger.info(f"📝 Commande FFmpeg: {' '.join(cmd)}")
         
