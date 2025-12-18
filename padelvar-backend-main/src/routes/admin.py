@@ -167,14 +167,14 @@ def delete_user(user_id):
         # 3. Gérer l'historique des actions
         history_entries = ClubActionHistory.query.filter_by(user_id=user_id).all()
         for entry in history_entries:
-            entry.user_id = None  # Garder l'historique mais anonymiser
-            print(f"   📝 Historique {entry.id} anonymisé: user_id -> NULL")
+            db.session.delete(entry)  # Supprimer l'entrée (user_id ne peut pas être NULL)
+            print(f"   📝 Historique {entry.id} supprimé")
         
         # 4. Gérer l'historique où l'utilisateur était le performeur
         performed_entries = ClubActionHistory.query.filter_by(performed_by_id=user_id).all()
         for entry in performed_entries:
-            entry.performed_by_id = None
-            print(f"   📝 Historique {entry.id} anonymisé: performed_by_id -> NULL")
+            db.session.delete(entry)  # Supprimer l'entrée (performed_by_id ne peut pas être NULL)
+            print(f"   📝 Historique {entry.id} supprimé (performed_by)")
         
         # 5. Si c'est un utilisateur club, gérer les relations club
         if user.role == UserRole.CLUB and user.club_id:
@@ -200,7 +200,7 @@ def delete_user(user_id):
             "message": "Utilisateur supprimé avec succès",
             "videos_orphaned": len(videos),
             "recording_sessions_deleted": len(recording_sessions),
-            "history_entries_anonymized": len(history_entries) + len(performed_entries)
+            "history_entries_deleted": len(history_entries) + len(performed_entries)
         }), 200
         
     except Exception as e:
@@ -611,6 +611,19 @@ def update_court(court_id):
     try:
         if "name" in data: court.name = data["name"]
         if "camera_url" in data: court.camera_url = data["camera_url"]
+        
+        # Allow admin to update QR code
+        if "qr_code" in data:
+            new_qr_code = data["qr_code"].strip()
+            # Check if QR code is unique (excluding current court)
+            existing_court = Court.query.filter(
+                Court.qr_code == new_qr_code,
+                Court.id != court_id
+            ).first()
+            if existing_court:
+                return jsonify({"error": f"Ce code QR est déjà utilisé par le terrain '{existing_court.name}'"}), 400
+            court.qr_code = new_qr_code
+        
         db.session.commit()
         return jsonify({"message": "Terrain mis à jour", "court": court.to_dict()}), 200
     except Exception as e:
