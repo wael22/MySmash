@@ -68,7 +68,8 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   });
   const [courtFormData, setCourtFormData] = useState({
     name: "",
-    camera_url: 'http://212.231.225.55:88/axis-cgi/mjpg/video.cgi'
+    camera_url: 'http://212.231.225.55:88/axis-cgi/mjpg/video.cgi',
+    qr_code: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -253,7 +254,8 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   const resetCourtForm = () => {
     setCourtFormData({
       name: "",
-      camera_url: 'http://212.231.225.55:88/axis-cgi/mjpg/video.cgi'
+      camera_url: 'http://212.231.225.55:88/axis-cgi/mjpg/video.cgi',
+      qr_code: ""
     });
     setSelectedClub(null);
     setSelectedCourt(null);
@@ -293,7 +295,8 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
     setSelectedCourt(court);
     setCourtFormData({
       name: court.name || '',
-      camera_url: court.camera_url || ''
+      camera_url: court.camera_url || '',
+      qr_code: court.qr_code || ''
     });
     setShowEditCourtModal(true);
   };
@@ -781,6 +784,19 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
                 placeholder="http://212.231.225.55:88/axis-cgi/mjpg/video.cgi"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-qr-code">QR Code du terrain</Label>
+              <Input
+                id="edit-qr-code"
+                value={courtFormData.qr_code}
+                onChange={(e) => setCourtFormData(prev => ({ ...prev, qr_code: e.target.value }))}
+                placeholder="Ex: terrain-001"
+              />
+              <p className="text-xs text-gray-500">
+                Modifiez le QR code unique de ce terrain. Les joueurs devront scanner ce code pour enregistrer.
+              </p>
             </div>
 
             <div className="flex justify-end space-x-2">

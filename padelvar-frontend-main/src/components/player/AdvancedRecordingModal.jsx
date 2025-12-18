@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { recordingService, playerService } from '../../lib/api';
+import { recordingService, playerService, videoService } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -147,6 +147,11 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
       return;
     }
 
+    if (!recordingData.qr_code) {
+      setError('Le code QR du terrain est requis');
+      return;
+    }
+
     if (!user || !user.id) {
       setError('Utilisateur non authentifié');
       return;
@@ -156,6 +161,17 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
     setError('');
 
     try {
+      // Validate QR code matches selected court
+      const qrValidation = await videoService.scanQrCode(recordingData.qr_code);
+
+      // Check if the QR code corresponds to the selected court
+      if (qrValidation.data.court.id.toString() !== recordingData.court_id) {
+        setError(`Le code QR ne correspond pas au terrain sélectionné. Ce code est pour le terrain "${qrValidation.data.court.name}"`);
+        setIsLoading(false);
+        return;
+      }
+
+      // QR code is valid, proceed with recording
       // Utiliser le recordingService au lieu de fetch direct
       const response = await recordingService.startAdvancedRecording({
         court_id: recordingData.court_id,
@@ -170,8 +186,12 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
       handleClose();
 
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || 'Erreur lors du démarrage de l\'enregistrement';
-      setError(errorMessage);
+      if (error.response?.status === 404) {
+        setError('Code QR invalide. Veuillez scanner le QR code du terrain.');
+      } else {
+        const errorMessage = error.response?.data?.error || error.message || 'Erreur lors du démarrage de l\'enregistrement';
+        setError(errorMessage);
+      }
       console.error('Error starting recording:', error);
     } finally {
       setIsLoading(false);
@@ -374,14 +394,15 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
             )}
           </div>
 
-          {/* QR Code optionnel */}
+          {/* QR Code required */}
           <div className="space-y-2">
-            <Label>QR Code du terrain (optionnel)</Label>
+            <Label>QR Code du terrain *</Label>
             <div className="flex space-x-2">
               <Input
                 placeholder="Code du terrain"
                 value={recordingData.qr_code}
                 onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))}
+                required
               />
               <Button type="button" variant="outline" size="icon">
                 <QrCode className="h-4 w-4" />
@@ -405,6 +426,7 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
                 isLoading ||
                 !recordingData.club_id ||
                 !recordingData.court_id ||
+                !recordingData.qr_code ||
                 availableCourts.find(c => c.id.toString() === recordingData.court_id)?.available === false
               }
               className="btn-primary-modern px-6"

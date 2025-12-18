@@ -256,7 +256,7 @@ const ClubDashboard = () => {
                               )}
                             </Badge>
                           </CardTitle>
-                          <CardDescription>QR Code: {court.qr_code?.substring(0, 8)}...</CardDescription>
+                          <CardDescription className="font-mono text-xs break-all">QR Code: {court.qr_code}</CardDescription>
                           {court.is_occupied && (
                             <div className="text-sm text-red-600 font-medium">
                               🎬 {court.recording_player} - {court.recording_remaining}min restant

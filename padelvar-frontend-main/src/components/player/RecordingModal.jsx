@@ -122,9 +122,26 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
       setError('Veuillez sélectionner un club et un terrain');
       return;
     }
+    if (!recordingData.qr_code) {
+      setError('Le code QR du terrain est requis');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
+
     try {
+      // Validate QR code matches selected court
+      const qrValidation = await videoService.scanQrCode(recordingData.qr_code);
+
+      // Check if the QR code corresponds to the selected court
+      if (qrValidation.data.court.id.toString() !== recordingData.court_id) {
+        setError(`Le code QR ne correspond pas au terrain sélectionné. Ce code est pour le terrain "${qrValidation.data.court.name}"`);
+        setIsLoading(false);
+        return;
+      }
+
+      // QR code is valid, proceed with recording
       const response = await videoService.startRecording({
         court_id: recordingData.court_id,
         duration: 90, // Durée par défaut de 90 minutes
@@ -150,7 +167,11 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
       }, 90 * 60 * 1000); // 90 minutes
 
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors du démarrage');
+      if (error.response?.status === 404) {
+        setError('Code QR invalide. Veuillez scanner le QR code du terrain.');
+      } else {
+        setError(error.response?.data?.error || 'Erreur lors du démarrage');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -259,15 +280,15 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>QR Code du terrain (optionnel)</Label>
+                <Label>QR Code du terrain *</Label>
                 <div className="flex space-x-2">
-                  <Input placeholder="Code du terrain" value={recordingData.qr_code} onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))} />
+                  <Input placeholder="Code du terrain" value={recordingData.qr_code} onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))} required />
                   <Button type="button" variant="outline"><QrCode className="h-4 w-4" /></Button>
                 </div>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" onClick={handleClose}>Annuler</Button>
-                <Button onClick={handleStartRecording} disabled={isLoading || !recordingData.club_id || !recordingData.court_id}>
+                <Button onClick={handleStartRecording} disabled={isLoading || !recordingData.club_id || !recordingData.court_id || !recordingData.qr_code}>
                   {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
                   Démarrer
                 </Button>

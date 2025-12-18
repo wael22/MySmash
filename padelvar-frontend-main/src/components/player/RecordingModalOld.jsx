@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -19,10 +19,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Play, 
-  Square, 
-  QrCode, 
+import {
+  Play,
+  Square,
+  QrCode,
   Loader2,
   Camera,
   Clock
@@ -103,10 +103,17 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   }, [step, recordingData.startTime]);
 
   const handleStartRecording = async () => {
+    if (!recordingData.qr_code) {
+      setError('Le code QR du terrain est requis');
+      return;
+    }
     setIsLoading(true);
     setError('');
 
     try {
+      // Validate QR code first
+      const qrValidation = await videoService.scanQrCode(recordingData.qr_code);
+      // QR code is valid, start recording
       const response = await videoService.startRecording({
         qr_code: recordingData.qr_code || undefined
       });
@@ -117,10 +124,14 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
         court_id: response.data.court_id,
         startTime: Date.now()
       }));
-      
+
       setStep('recording');
     } catch (error) {
-      setError('Erreur lors du démarrage de l\'enregistrement');
+      if (error.response?.status === 404) {
+        setError('Code QR invalide. Veuillez scanner le QR code du terrain.');
+      } else {
+        setError('Erreur lors du démarrage de l\'enregistrement');
+      }
       console.error('Error starting recording:', error);
     } finally {
       setIsLoading(false);
@@ -225,16 +236,17 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
               </div>
 
               <div className="space-y-2">
-                <Label>QR Code du terrain (optionnel)</Label>
+                <Label>QR Code du terrain *</Label>
                 <div className="flex space-x-2">
                   <Input
                     placeholder="Code du terrain"
                     value={recordingData.qr_code}
                     onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))}
+                    required
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={handleQRScan}
                     className="flex-shrink-0"
                   >
@@ -247,7 +259,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 <Button variant="outline" onClick={handleClose}>
                   Annuler
                 </Button>
-                <Button onClick={handleStartRecording} disabled={isLoading}>
+                <Button onClick={handleStartRecording} disabled={isLoading || !recordingData.qr_code}>
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
@@ -286,8 +298,8 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 </div>
               )}
 
-              <Button 
-                onClick={handleStopRecording} 
+              <Button
+                onClick={handleStopRecording}
                 disabled={isLoading}
                 variant="destructive"
                 size="lg"
