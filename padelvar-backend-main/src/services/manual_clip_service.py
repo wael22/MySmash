@@ -120,17 +120,19 @@ class ManualClipService:
             
             config = self._get_bunny_config()
             
-            # Construire l'URL source Bunny
-            source_url = f"https://{config['cdn_hostname']}/{video.bunny_video_id}/playlist.m3u8"
+            # Utiliser l'URL de téléchargement MP4 via API (pas HLS public)
+            # Bunny Stream API permet le téléchargement avec API key
+            source_url = f"https://video.bunnycdn.com/play/{config['library_id']}/{video.bunny_video_id}"
             
-            logger.info(f"Creating clip from Bunny Stream URL: {source_url}")
+            logger.info(f"Creating clip from Bunny Stream: {video.bunny_video_id}")
             logger.info(f"Cutting from {clip.start_time}s to {clip.end_time}s")
             
-            # Découper directement depuis l'URL (SANS télécharger)
-            clip_path = self._cut_video_from_url(
-                source_url, 
+            # Découper directement depuis l'URL avec API key
+            clip_path = self._cut_video_from_bunny_api(
+                video.bunny_video_id,
                 clip.start_time, 
-                clip.end_time
+                clip.end_time,
+                config
             )
             
             # Générer miniature
@@ -214,6 +216,66 @@ class ManualClipService:
                 f.write(chunk)
         
         return temp_file
+    
+    def _cut_video_from_bunny_api(self, video_id: str, start_time: float, end_time: float, config: dict) -> str:
+        """
+        Télécharge vidéo via API Bunny (avec auth) puis découpe
+        ✅ Résout 403 Forbidden
+        """
+        output_path = os.path.join(self.temp_dir, f"clip_{datetime.now().timestamp()}.mp4")
+        
+        # Télécharger via API
+        logger.info(f"Downloading from Bunny API: {video_id}")
+        download_url = f"https://video.bunnycdn.com/play/{config['library_id']}/{video_id}"
+        
+        headers = {'AccessKey': config['api_key']}
+        response = requests.get(download_url, headers=headers, stream=True)
+        response.raise_for_status()
+        
+        temp_source = os.path.join(self.temp_dir, f"source_{datetime.now().timestamp()}.mp4")
+        
+        with open(temp_source, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        logger.info(f"Downloaded source, cutting clip...")
+        
+        # Découper
+        duration = end_time - start_time
+        cmd = [
+            'ffmpeg', '-y',
+            '-ss', str(start_time),
+            '-i', temp_source,
+            '-t', str(duration),
+            '-c', 'copy',
+            '-movflags', '+faststart',
+            output_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            # Fallback ré-encodage
+            cmd = [
+                'ffmpeg', '-y',
+                '-ss', str(start_time),
+                '-i', temp_source,
+                '-t', str(duration),
+                '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+                '-c:a', 'aac',
+                output_path
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"FFmpeg failed: {result.stderr}")
+        
+        # Nettoyer
+        try:
+            os.remove(temp_source)
+        except:
+            pass
+        
+        return output_path
     
     def _cut_video_from_url(self, source_url: str, start_time: float, end_time: float) -> str:
         """
