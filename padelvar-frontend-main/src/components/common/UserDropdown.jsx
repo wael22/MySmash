@@ -37,6 +37,7 @@ const UserDropdown = ({ user, credits, onBuyCredits, onProfile, onSettings, onLo
         <div className="relative" ref={dropdownRef}>
             {/* Bouton du profil */}
             <button
+                id="profile-button"
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
                 aria-label="Menu utilisateur"
@@ -71,6 +72,7 @@ const UserDropdown = ({ user, credits, onBuyCredits, onProfile, onSettings, onLo
                     <div className="py-1">
                         {onBuyCredits && (
                             <button
+                                id="buy-credits-button"
                                 onClick={() => handleOptionClick(onBuyCredits)}
                                 className="dropdown-item-modern w-full"
                             >

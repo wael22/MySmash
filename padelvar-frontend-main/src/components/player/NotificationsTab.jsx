@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { notificationService } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ const NotificationsTab = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     useEffect(() => {
         loadNotifications();
@@ -157,7 +159,10 @@ const NotificationsTab = () => {
                                                 className="p-0 h-auto mt-2 text-blue-600"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    window.location.href = notification.link;
+                                                    if (!notification.is_read) {
+                                                        handleMarkAsRead(notification.id);
+                                                    }
+                                                    navigate(notification.link);
                                                 }}
                                             >
                                                 Voir plus →

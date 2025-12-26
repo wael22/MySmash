@@ -65,7 +65,7 @@ const VideoClipEditor = ({ isOpen, onClose, video, onClipCreated }) => {
 
         // Si on a juste un bunny_video_id, utiliser le library ID par défaut
         if (video?.bunny_video_id) {
-            const libraryId = '555438';
+            const libraryId = 'f2c97d0e-5d4';
             const url = `https://vz-${libraryId}.b-cdn.net/${video.bunny_video_id}/playlist.m3u8`;
             console.log('Using Bunny Stream HLS URL with default library ID:', url);
             return url;

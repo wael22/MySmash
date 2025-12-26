@@ -65,7 +65,7 @@ api.interceptors.response.use(
     // PAS pour les erreurs 500 (erreurs serveur)
     // ET PAS pour les pages publiques comme /super-secret-login ou /register
     if (error.response?.status === 401) {
-      const publicRoutes = ['/login', '/register', '/super-secret-login', '/forgot-password', '/reset-password'];
+      const publicRoutes = ['/login', '/register', '/super-secret-login', '/forgot-password', '/reset-password', '/verify-email'];
       const isPublicRoute = publicRoutes.some(route => window.location.pathname.startsWith(route));
 
       if (!isRedirecting && !isPublicRoute) {
@@ -87,8 +87,10 @@ export const authService = {
   logout: () => api.post('/auth/logout'),
   getCurrentUser: () => api.get('/auth/me'),
   updateProfile: (profileData) => api.put('/auth/update-profile', profileData),
-  // NOUVELLE FONCTION
   changePassword: (passwordData) => api.post('/auth/change-password', passwordData),
+  // Email verification
+  verifyEmail: (email, code) => api.post('/auth/verify-email', { email, code }),
+  resendVerificationCode: (email) => api.post('/auth/resend-verification', { email }),
 };
 
 export const videoService = {
@@ -174,6 +176,12 @@ export const adminService = {
   getLogs: (params) => api.get('/admin/logs', { params }),
   downloadLogs: () => api.get('/admin/logs/download', { responseType: 'blob' }),
 
+  // Notifications management
+  getNotifications: () => api.get('/notifications'),
+  markNotificationAsRead: (notificationId) => api.post(`/notifications/${notificationId}/mark-read`),
+  markAllNotificationsAsRead: () => api.post('/notifications/mark-all-read'),
+
+
   // Gestion CRUD des packages de crédits
   getCreditPackages: (type) => api.get(`/admin/credit-packages${type ? `?type=${type}` : ''}`),
   createCreditPackage: (packageData) => api.post('/admin/credit-packages', packageData),
@@ -190,6 +198,12 @@ export const adminService = {
   createClubOverlay: (clubId, data) => api.post(`/admin/clubs/${clubId}/overlays`, data),
   updateClubOverlay: (clubId, overlayId, data) => api.put(`/admin/clubs/${clubId}/overlays/${overlayId}`, data),
   deleteClubOverlay: (clubId, overlayId) => api.delete(`/admin/clubs/${clubId}/overlays/${overlayId}`),
+};
+
+export const settingsService = {
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (settings) => api.put('/admin/settings', settings),
+  getPublicSettings: () => api.get('/admin/settings/public')  // Public route, no auth required
 };
 
 export const analyticsService = {
@@ -307,5 +321,15 @@ export const videoSystemService = {
     return `${baseUrl}/api/preview/${sessionId}/snapshot.jpg?token=${token}&t=${timestamp}`;
   },
 };
+
+// Tutorial service
+export const tutorialService = {
+  getStatus: () => api.get('/tutorial/status'),
+  updateStep: (step) => api.post('/tutorial/step', { step }),
+  complete: () => api.post('/tutorial/complete'),
+  reset: () => api.post('/tutorial/reset'),
+  skip: () => api.post('/tutorial/skip'),
+};
+
 
 export default api;

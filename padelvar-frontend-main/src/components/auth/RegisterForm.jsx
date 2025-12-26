@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { settingsService } from '../../lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,7 @@ const RegisterForm = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [welcomeCredits, setWelcomeCredits] = useState(1);
   const { register, error } = useAuth();
   const navigate = useNavigate();
 
@@ -29,6 +31,19 @@ const RegisterForm = () => {
     });
     setLocalError('');
   };
+
+  useEffect(() => {
+    const fetchWelcomeCredits = async () => {
+      try {
+        const response = await settingsService.getPublicSettings();
+        setWelcomeCredits(response.data.welcome_credits ?? 1);  // Use ?? instead of || to preserve 0
+      } catch (error) {
+        console.error('Error fetching welcome credits:', error);
+        // Keep default value of 1 on error
+      }
+    };
+    fetchWelcomeCredits();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,7 +70,14 @@ const RegisterForm = () => {
     });
 
     if (result.success) {
-      navigate('/dashboard');
+      // Check if verification is required
+      if (result.data?.requires_verification) {
+        // Redirect to verification page with email
+        navigate('/verify-email', { state: { email: formData.email } });
+      } else {
+        // Old flow - direct login (shouldn't happen with new backend)
+        navigate('/dashboard');
+      }
     }
 
     setIsLoading(false);
@@ -194,11 +216,13 @@ const RegisterForm = () => {
             </p>
           </div>
 
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">
-              En vous inscrivant, vous recevez 5 crédits gratuits !
-            </p>
-          </div>
+          {welcomeCredits > 0 && (
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-500">
+                En vous inscrivant, vous recevez {welcomeCredits} crédit{welcomeCredits > 1 ? 's' : ''} gratuit{welcomeCredits > 1 ? 's' : ''} !
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 flex flex-col items-center justify-center">
             <div className="relative w-full mb-4">

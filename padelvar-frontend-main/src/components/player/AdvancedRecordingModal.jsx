@@ -34,8 +34,9 @@ import {
   Infinity,
   User
 } from 'lucide-react';
+import QRScannerModal from './QRScannerModal';  // 🆕 Scanner QR
 
-const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
+const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted, initialQRCode = '' }) => {
   const { user } = useAuth();
   const [step, setStep] = useState('setup');
   const [recordingData, setRecordingData] = useState({
@@ -53,13 +54,14 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
   const [loadingCourts, setLoadingCourts] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);  // 🆕 QR scanner modal
 
   // Options de durée
   const durationOptions = [
     { value: 60, label: '60 minutes', icon: <Clock className="h-4 w-4" />, description: 'Match court' },
     { value: 90, label: '90 minutes', icon: <Clock className="h-4 w-4" />, description: 'Durée standard' },
     { value: 120, label: '120 minutes', icon: <Clock className="h-4 w-4" />, description: 'Match long' },
-    { value: 'MAX', label: 'MAX (200 min)', icon: <Infinity className="h-4 w-4" />, description: 'Durée maximale' }
+    { value: 200, label: 'MAX (200 min)', icon: <Infinity className="h-4 w-4" />, description: 'Durée maximale' }
   ];
 
   useEffect(() => {
@@ -72,12 +74,12 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
         club_id: '',
         court_id: '',
         duration: 90,
-        qr_code: ''
+        qr_code: initialQRCode  // 🆕 Use initial QR code if provided
       });
       setStep('setup');
       setError('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialQRCode]);  // 🆕 Add initialQRCode to dependencies
 
   useEffect(() => {
     if (recordingData.club_id) {
@@ -193,6 +195,46 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
         setError(errorMessage);
       }
       console.error('Error starting recording:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 🆕 Handler pour le scan QR
+  const handleQRCodeScanned = async (code) => {
+    console.log('✅ QR Code scanné:', code);
+    setRecordingData(prev => ({ ...prev, qr_code: code }));
+    setIsQRScannerOpen(false);
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Appeler l'API pour valider le QR code et récupérer les infos
+      const response = await videoService.scanQrCode(code);
+      const { court, club } = response.data;
+
+      console.log('✅ QR Code validé - Club:', club?.name, 'Terrain:', court?.name);
+
+      // Auto-remplir les champs club et terrain
+      setRecordingData(prev => ({
+        ...prev,
+        qr_code: code,
+        club_id: club?.id?.toString() || '',
+        court_id: court?.id?.toString() || ''
+      }));
+
+      // Charger les terrains du club si pas déjà fait
+      if (club?.id && availableCourts.length === 0) {
+        await loadAvailableCourts(club.id);
+      }
+
+    } catch (err) {
+      console.error('❌ Erreur validation QR:', err);
+      if (err.response?.status === 404) {
+        setError('Code QR invalide. Veuillez scanner un QR code valide ou le saisir manuellement.');
+      } else {
+        setError('Erreur lors de la validation du QR code. Veuillez réessayer.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -402,9 +444,22 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
                 placeholder="Code du terrain"
                 value={recordingData.qr_code}
                 onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))}
+                onBlur={(e) => {
+                  // Valider le QR code quand l'utilisateur quitte le champ
+                  const code = e.target.value.trim();
+                  if (code && code !== recordingData.qr_code) {
+                    handleQRCodeScanned(code);
+                  }
+                }}
                 required
               />
-              <Button type="button" variant="outline" size="icon">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setIsQRScannerOpen(true)}
+                title="Scanner avec la caméra"
+              >
                 <QrCode className="h-4 w-4" />
               </Button>
             </div>
@@ -445,6 +500,13 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted }) => {
             </button>
           </div>
         </div>
+
+        {/* 🆕 QR Scanner Modal */}
+        <QRScannerModal
+          isOpen={isQRScannerOpen}
+          onClose={() => setIsQRScannerOpen(false)}
+          onCodeScanned={handleQRCodeScanned}
+        />
       </DialogContent>
     </Dialog>
   );

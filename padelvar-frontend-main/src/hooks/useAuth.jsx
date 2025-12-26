@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       // Éviter les appels multiples
       if (isInitialized) return;
-      
+
       try {
         const response = await authService.getCurrentUser();
         setUser(response.data.user);
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
         setIsInitialized(true);
       }
     };
-    
+
     initializeAuth();
   }, [isInitialized]);
 
@@ -65,8 +65,14 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       const response = await authService.register(userData);
-      setUser(response.data.user);
-      return { success: true, user: response.data.user };
+
+      // Don't set user if verification is required (user not created yet)
+      if (response.data.user) {
+        setUser(response.data.user);
+      }
+
+      // Return FULL response data including requires_verification
+      return { success: true, data: response.data };
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Erreur d\'inscription';
       setError(errorMessage);

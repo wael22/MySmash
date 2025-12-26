@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { adminService } from '../../lib/api';
+import { adminService, settingsService } from '../../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,6 +25,14 @@ const SystemConfiguration = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
 
+    // System Settings State
+    const [systemSettings, setSystemSettings] = useState({
+        welcome_credits: 1
+    });
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    const [settingsSaving, setSettingsSaving] = useState(false);
+    const [settingsMessage, setSettingsMessage] = useState({ type: '', text: '' });
+
     // Bunny CDN State
     const [bunnyConfig, setBunnyConfig] = useState({
         api_key: '',
@@ -37,6 +45,7 @@ const SystemConfiguration = () => {
 
     useEffect(() => {
         loadBunnyConfig();
+        loadSystemSettings();
     }, []);
 
     const loadBunnyConfig = async () => {
@@ -124,6 +133,39 @@ const SystemConfiguration = () => {
             });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const loadSystemSettings = async () => {
+        try {
+            setSettingsLoading(true);
+            const response = await settingsService.getSettings();
+            setSystemSettings({
+                welcome_credits: response.data.welcome_credits || 1
+            });
+        } catch (error) {
+            console.error('Error loading system settings:', error);
+            setSettingsMessage({ type: 'error', text: 'Erreur lors du chargement des paramètres' });
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const saveSystemSettings = async () => {
+        try {
+            setSettingsSaving(true);
+            setSettingsMessage({ type: '', text: '' });
+
+            await settingsService.updateSettings(systemSettings);
+
+            setSettingsMessage({ type: 'success', text: 'Paramètres enregistrés avec succès !' });
+        } catch (error) {
+            setSettingsMessage({
+                type: 'error',
+                text: error.response?.data?.error || 'Erreur lors de l\'enregistrement'
+            });
+        } finally {
+            setSettingsSaving(false);
         }
     };
 
@@ -291,9 +333,64 @@ const SystemConfiguration = () => {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-gray-500 text-sm">
-                                D'autres configurations seront ajoutées ici (SMTP, notifications, etc.)
-                            </p>
+                            {settingsLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {settingsMessage.text && (
+                                        <Alert variant={settingsMessage.type === 'error' ? 'destructive' : 'default'}>
+                                            <AlertDescription className="flex items-center gap-2">
+                                                {settingsMessage.type === 'success' ? (
+                                                    <CheckCircle className="h-4 w-4" />
+                                                ) : (
+                                                    <XCircle className="h-4 w-4" />
+                                                )}
+                                                {settingsMessage.text}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-4">Crédits Gratuits à l'Inscription</h3>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="welcome_credits">Nombre de crédits</Label>
+                                                <Input
+                                                    id="welcome_credits"
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    value={systemSettings.welcome_credits}
+                                                    onChange={(e) => setSystemSettings({
+                                                        ...systemSettings,
+                                                        welcome_credits: parseInt(e.target.value) || 0
+                                                    })}
+                                                    className="max-w-xs"
+                                                />
+                                                <p className="text-xs text-gray-500">
+                                                    Nombre de crédits offerts automatiquement aux nouveaux utilisateurs lors de leur inscription
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            onClick={saveSystemSettings}
+                                            disabled={settingsSaving}
+                                        >
+                                            {settingsSaving ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Enregistrement...
+                                                </>
+                                            ) : (
+                                                'Enregistrer les paramètres'
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

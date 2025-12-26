@@ -46,7 +46,7 @@ const Navbar = ({ title }) => {
 
             {/* Affichage des crédits pour les joueurs */}
             {user?.role === 'player' && (
-              <div className="flex items-center space-x-2 bg-yellow-50 px-3 py-1 rounded-full">
+              <div id="credits-balance" className="flex items-center space-x-2 bg-yellow-50 px-3 py-1 rounded-full">
                 <Coins className="h-4 w-4 text-yellow-600" />
                 <span className="text-sm font-medium text-yellow-800">
                   {user.credits_balance} crédits

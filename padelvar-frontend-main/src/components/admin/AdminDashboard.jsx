@@ -9,6 +9,7 @@ import SystemConfiguration from './SystemConfiguration';
 import SystemLogs from './SystemLogs';
 import SupportManagement from './SupportManagement';
 import OverviewTab from './OverviewTab';
+// import SystemNotifications from './SystemNotifications';  // 🔴 DÉSACTIVÉ - Ne fonctionne pas
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -151,6 +152,11 @@ const AdminDashboard = () => {
             </Card>
           </div>
         )}
+
+        {/* 🔴 Notifications Système désactivées - Ne fonctionnent pas avec worker threads */}
+        {/* <div className="mb-6">
+          <SystemNotifications />
+        </div> */}
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-8">

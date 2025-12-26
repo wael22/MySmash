@@ -39,8 +39,8 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
     }
 
     // 2. Extraire depuis l'URL si c'est une URL Bunny
-    if (video.url && video.url.includes('vz-82bd892c-344.b-cdn.net')) {
-      const match = video.url.match(/vz-82bd892c-344\.b-cdn\.net\/([^\/]+)/);
+    if (video.url && video.url.includes('vz-f2c97d0e-5d4.b-cdn.net')) {
+      const match = video.url.match(/vz-f2c97d0e-5d4\.b-cdn\.net\/([^\/]+)/);
       if (match) {
         return match[1];
       }
@@ -49,8 +49,8 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
     // 3. Chercher dans les fallback URLs
     if (video.fallbackUrls && Array.isArray(video.fallbackUrls)) {
       for (const urlInfo of video.fallbackUrls) {
-        if (urlInfo.url && urlInfo.url.includes('vz-82bd892c-344.b-cdn.net')) {
-          const match = urlInfo.url.match(/vz-82bd892c-344\.b-cdn\.net\/([^\/]+)/);
+        if (urlInfo.url && urlInfo.url.includes('vz-f2c97d0e-5d4.b-cdn.net')) {
+          const match = urlInfo.url.match(/vz-f2c97d0e-5d4\.b-cdn\.net\/([^\/]+)/);
           if (match) {
             return match[1];
           }
@@ -88,13 +88,10 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
           <div className="flex-1 flex items-center justify-center bg-gray-100 rounded-lg">
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">Vidéo non disponible</h3>
-              <p className="text-gray-600 mb-4">
-                Aucun ID Bunny Stream trouvé pour cette vidéo.
+              <p className="text-gray-600">
+                Cette vidéo n'est pas encore prête ou n'est plus disponible.
               </p>
-              <div className="text-sm text-gray-500">
-                <p>URL reçue: {video.url}</p>
-                <p>Source: {video.urlSource}</p>
-              </div>
+
             </div>
           </div>
         </DialogContent>
@@ -103,33 +100,34 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
   }
 
   // URL du lecteur Bunny Stream (selon leur documentation)
-  const bunnyPlayerUrl = `https://iframe.mediadelivery.net/embed/555438/${bunnyVideoId}?autoplay=false&loop=false&muted=false&preload=true&responsive=true`;
+  const bunnyPlayerUrl = `https://iframe.mediadelivery.net/embed/475694/${bunnyVideoId}?autoplay=false&loop=false&muted=false&preload=true&responsive=true`;
 
   console.log('🎬 URL du lecteur Bunny générée:', bunnyPlayerUrl);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-full h-[90vh] p-0 gap-0">
-        <DialogHeader className="px-6 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">
+      <DialogContent className="max-w-6xl w-[95vw] sm:w-full h-[95vh] sm:h-[90vh] p-0 gap-0">
+        <DialogHeader className="px-3 sm:px-6 pt-3 sm:pt-4 pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle className="text-base sm:text-xl font-semibold truncate flex-1">
               {video.title || `Match du ${new Date(video.recordedAt).toLocaleDateString()}`}
             </DialogTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setClipEditorOpen(true)}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
               >
-                <Scissors className="h-4 w-4" />
-                Créer un Clip
+                <Scissors className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Créer un Clip</span>
+                <span className="sm:hidden">Clip</span>
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8"
+                className="h-7 w-7 sm:h-8 sm:w-8"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -137,7 +135,7 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
           </div>
         </DialogHeader>
 
-        <div className="bg-black overflow-hidden" style={{ height: 'calc(90vh - 80px)' }}>
+        <div className="bg-black overflow-hidden flex-1" style={{ height: 'calc(95vh - 60px)' }}>
           <iframe
             ref={iframeRef}
             src={bunnyPlayerUrl}

@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { authService } from '@/lib/api';
 import GoogleAuth from '../GoogleAuth';
 
 const LoginForm = () => {
@@ -15,6 +16,8 @@ const LoginForm = () => {
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendingCode, setResendingCode] = useState(false);
   const { login, error } = useAuth();
   const navigate = useNavigate();
 
@@ -46,12 +49,27 @@ const LoginForm = () => {
           break;
       }
     } else if (result.error && result.error.redirect_to_super_admin) {
-      // Super admin detectedé - rediriger vers la page de connexion dédiée
+      // Super admin detected - rediriger vers la page de connexion dédiée
       // Note: Ne pas rediriger automatiquement pour des raisons de sécurité
       // L'utilisateur doit connaître l'URL
+    } else if (result.error && result.error.requires_verification) {
+      // Email not verified
+      setNeedsVerification(true);
     }
 
     setIsLoading(false);
+  };
+
+  const handleResendCode = async () => {
+    setResendingCode(true);
+    try {
+      await authService.resendVerificationCode(formData.email);
+      navigate('/verify-email', { state: { email: formData.email } });
+    } catch (err) {
+      console.error('Error resending code:', err);
+    } finally {
+      setResendingCode(false);
+    }
   };
 
   return (
@@ -68,8 +86,31 @@ const LoginForm = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+              <Alert variant={needsVerification ? "default" : "destructive"}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {error}
+                  {needsVerification && (
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendCode}
+                        disabled={resendingCode}
+                      >
+                        {resendingCode ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Envoi...
+                          </>
+                        ) : (
+                          'Renvoyer le code'
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 

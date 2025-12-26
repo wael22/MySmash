@@ -39,13 +39,21 @@ const VideoCardModern = ({
     const formatDuration = (seconds) => {
         if (!seconds) return '0s';
         const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
+        const secs = Math.round(seconds % 60);
         return `${mins}m ${secs}s`;
     };
 
     // Formater la date
     const formatDate = (dateString) => {
+        if (!dateString) return 'Date non disponible';
+
         const date = new Date(dateString);
+
+        // Si la date est invalide, retourner un fallback
+        if (isNaN(date.getTime())) {
+            return 'Date non disponible';
+        }
+
         return date.toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'long',
@@ -194,7 +202,7 @@ const VideoCardModern = ({
 
                 {/* Date */}
                 <p className="text-sm text-gray-500 mb-2">
-                    {formatDate(video.created_at)}
+                    {formatDate(video.created_at || video.recorded_at)}
                 </p>
 
                 {/* Informations terrain/club */}

@@ -27,7 +27,7 @@ const CreditSystemDisplay = ({ onBuyCreditsClick }) => {
         videoService.getPaymentMethods(),
         videoService.getCreditsHistory()
       ]);
-      
+
       setPackages(packagesRes.data.packages || []);
       setPaymentMethods(paymentRes.data.payment_methods || []);
       setCreditsHistory(historyRes.data.history || []);
@@ -66,7 +66,7 @@ const CreditSystemDisplay = ({ onBuyCreditsClick }) => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Coins className="h-5 w-5 mr-2 text-yellow-500" />
-            Système de Crédits PadelVar
+            Système de Crédits MySmash
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -83,12 +83,12 @@ const CreditSystemDisplay = ({ onBuyCreditsClick }) => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {packages.filter(p => p.type === 'pack').length}
+                {packages.length}
               </div>
               <div className="text-sm text-gray-600">Packs économiques</div>
             </div>
           </div>
-          <Button onClick={onBuyCreditsClick} className="w-full mt-4">
+          <Button onClick={onBuyCreditsClick} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white">
             <Package className="h-4 w-4 mr-2" />
             Recharger mes crédits
           </Button>
@@ -186,9 +186,8 @@ const CreditSystemDisplay = ({ onBuyCreditsClick }) => {
                       {formatDate(transaction.performed_at)}
                     </div>
                   </div>
-                  <div className={`font-bold ${
-                    transaction.action_type === 'buy_credits' ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <div className={`font-bold ${transaction.action_type === 'buy_credits' ? 'text-green-600' : 'text-red-600'
+                    }`}>
                     {transaction.action_type === 'buy_credits' ? '+' : '-'}
                     {transaction.credits_involved || 1} crédit(s)
                   </div>

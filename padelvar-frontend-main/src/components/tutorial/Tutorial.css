@@ -1,0 +1,330 @@
+/* src/components/tutorial/Tutorial.css */
+
+/* ================================
+   TUTORIAL OVERLAY & BACKDROP
+   ================================ */
+
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.tutorial-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.3s ease-in;
+  pointer-events: auto;
+}
+
+/* ================================
+   SPOTLIGHT EFFECT
+   ================================ */
+
+.tutorial-spotlight {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 
+    0 0 0 9999px rgba(0, 0, 0, 0.7),
+    0 0 40px 10px rgba(59, 130, 246, 0.5),
+    inset 0 0 0 3px rgba(59, 130, 246, 0.8);
+  pointer-events: none;
+  animation: pulse 2s ease-in-out infinite;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10000;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 9999px rgba(0, 0, 0, 0.7),
+      0 0 40px 10px rgba(59, 130, 246, 0.5),
+      inset 0 0 0 3px rgba(59, 130, 246, 0.8);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 9999px rgba(0, 0, 0, 0.7),
+      0 0 50px 15px rgba(59, 130, 246, 0.7),
+      inset 0 0 0 3px rgba(96, 165, 250, 1);
+  }
+}
+
+/* Target element gets higher z-index */
+.tutorial-target-element {
+  position: relative;
+  z-index: 10001 !important;
+  pointer-events: auto;
+}
+
+/* ================================
+   TOOLTIP / POPOVER
+   ================================ */
+
+.tutorial-tooltip {
+  position: absolute;
+  max-width: 420px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(59, 130, 246, 0.2);
+  pointer-events: auto;
+  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10002;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Arrow pointing to target */
+.tutorial-tooltip::before {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 12px solid transparent;
+}
+
+/* Arrow positioning based on tooltip position */
+.tutorial-tooltip[data-position="top"]::before {
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-top-color: #ffffff;
+}
+
+.tutorial-tooltip[data-position="bottom"]::before {
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-bottom-color: #ffffff;
+}
+
+.tutorial-tooltip[data-position="left"]::before {
+  right: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left-color: #ffffff;
+}
+
+.tutorial-tooltip[data-position="right"]::before {
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-right-color: #ffffff;
+}
+
+.tutorial-tooltip[data-position="center"] {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ================================
+   TOOLTIP CONTENT
+   ================================ */
+
+.tutorial-header {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tutorial-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tutorial-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.tutorial-description {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+/* ================================
+   PROGRESS BAR
+   ================================ */
+
+.tutorial-progress {
+  margin-bottom: 16px;
+}
+
+.tutorial-progress-text {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.tutorial-progress-bar {
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.tutorial-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+/* ================================
+   BUTTONS
+   ================================ */
+
+.tutorial-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.tutorial-button-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.tutorial-button-primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.tutorial-button-secondary {
+  background: white;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.tutorial-button-secondary:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.tutorial-button-skip {
+  background: transparent;
+  color: #64748b;
+  padding: 8px 16px;
+  font-weight: 500;
+  font-size: 13px;
+  flex: 0;
+}
+
+.tutorial-button-skip:hover {
+  color: #475569;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tutorial-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ================================
+   ANIMATIONS
+   ================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+
+@media (max-width: 640px) {
+  .tutorial-tooltip {
+    max-width: calc(100vw - 32px);
+    padding: 20px;
+    margin: 16px;
+  }
+
+  .tutorial-title {
+    font-size: 18px;
+  }
+
+  .tutorial-description {
+    font-size: 14px;
+  }
+
+  .tutorial-buttons {
+    flex-direction: column;
+  }
+
+  .tutorial-button {
+    width: 100%;
+  }
+
+  .tutorial-button-skip {
+    width: auto;
+    align-self: center;
+  }
+}
+
+/* ================================
+   CENTER POSITION MODAL STYLE
+   ================================ */
+
+.tutorial-tooltip[data-position="center"] {
+  max-width: 500px;
+  padding: 32px;
+}
+
+.tutorial-tooltip[data-position="center"]::before {
+  display: none; /* No arrow for center popups */
+}

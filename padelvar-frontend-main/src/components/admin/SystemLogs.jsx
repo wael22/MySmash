@@ -22,6 +22,7 @@ const SystemLogs = () => {
     const [lineCount, setLineCount] = useState(100);
     const [totalLines, setTotalLines] = useState(0);
     const [logFile, setLogFile] = useState('');
+    const [errorCount, setErrorCount] = useState(0);  // 🆕 Compteur d'erreurs
 
     useEffect(() => {
         loadLogs();
@@ -34,9 +35,14 @@ const SystemLogs = () => {
 
             const response = await adminService.getLogs({ lines: lineCount, level: logLevel });
 
-            setLogs(response.data.logs || []);
+            const logsData = response.data.logs || [];
+            setLogs(logsData);
             setTotalLines(response.data.total_lines || 0);
             setLogFile(response.data.log_file || '');
+
+            // Compter les erreurs
+            const errors = logsData.filter(log => log.level === 'ERROR');
+            setErrorCount(errors.length);
         } catch (err) {
             setError(err.response?.data?.error || 'Erreur lors du chargement des logs');
             console.error('Error loading logs:', err);
@@ -52,7 +58,7 @@ const SystemLogs = () => {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `padelvar_logs_${new Date().toISOString().split('T')[0]}.log`);
+            link.setAttribute('download', `mysmash_logs_${new Date().toISOString().split('T')[0]}.log`);
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -101,6 +107,11 @@ const SystemLogs = () => {
                         <span className="flex items-center gap-2">
                             <FileText className="h-5 w-5" />
                             Journal des événements
+                            {errorCount > 0 && (
+                                <span className="ml-2 px-2 py-0.5 text-xs font-semibold text-white bg-red-600 rounded-full">
+                                    {errorCount} erreur{errorCount > 1 ? 's' : ''}
+                                </span>
+                            )}
                         </span>
                         <div className="flex items-center gap-2">
                             <Button
@@ -200,7 +211,14 @@ const SystemLogs = () => {
                                             {getLevelIcon(log.level)}
                                         </span>
                                         <span className="flex-1 break-all whitespace-pre-wrap">
-                                            {log.raw}
+                                            {/* Mise en évidence des erreurs Bunny CDN */}
+                                            {log.raw.includes('Upload définitivement échoué') ? (
+                                                <span className="font-bold text-red-400">
+                                                    🚨 BUNNY CDN: {log.raw}
+                                                </span>
+                                            ) : (
+                                                log.raw
+                                            )}
                                         </span>
                                     </div>
                                 ))}

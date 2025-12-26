@@ -4,11 +4,12 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import SuperAdminLogin from './components/auth/SuperAdminLogin';  // 🆕 Connexion Super Admin
-import PlayerDashboard from './components/player/PlayerDashboard';
+import PlayerDashboard from './components/player/PlayerDashboard';  // ✅ Modern version with Tutorial
 import AdminDashboard from './components/admin/AdminDashboard';
 import ClubDashboard from './components/club/ClubDashboard';
 import ProfilePage from './pages/ProfilePage';
 import MyClipsPage from './pages/MyClipsPage';  // 🆕 Page des clips
+import VerifyEmail from './components/auth/VerifyEmail';  // 🆕 Page de vérification d'email
 import GoogleAuthCallback from './components/GoogleAuthCallback';
 // Importation dynamique des pages pour éviter les erreurs de chargement
 import { Suspense, lazy } from 'react';
@@ -31,6 +32,7 @@ function App() {
             <Route path="/login" element={<LoginForm />} />
             <Route path="/super-secret-login" element={<SuperAdminLogin />} />  {/* 🆕 Login Super Admin */}
             <Route path="/register" element={<RegisterForm />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />  {/* 🆕 Vérification email */}
             <Route path="/google-auth-callback" element={<GoogleAuthCallback />} />
             <Route path="/forgot-password" element={
               <ErrorBoundary FallbackComponent={ErrorFallback}>
