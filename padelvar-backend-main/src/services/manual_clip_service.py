@@ -27,7 +27,7 @@ class ManualClipService:
         """Charge la config Bunny depuis la DB (comme bunny_storage_service)"""
         try:
             from src.models.system_configuration import SystemConfiguration
-            config = SystemConfiguration.get_bunny_config()
+            config = SystemConfiguration.get_bunny_cdn_config()  # ✅ Correct method name
             if config and config.get('api_key'):
                 return config
         except Exception as e:
@@ -224,9 +224,9 @@ class ManualClipService:
         """
         output_path = os.path.join(self.temp_dir, f"clip_{datetime.now().timestamp()}.mp4")
         
-        # Télécharger via API
+        # Télécharger via API - URL CORRECTE pour MP4 complet
         logger.info(f"Downloading from Bunny API: {video_id}")
-        download_url = f"https://video.bunnycdn.com/play/{config['library_id']}/{video_id}"
+        download_url = f"https://video.bunnycdn.com/library/{config['library_id']}/videos/{video_id}/mp4/original"
         
         headers = {'AccessKey': config['api_key']}
         response = requests.get(download_url, headers=headers, stream=True)
@@ -238,7 +238,7 @@ class ManualClipService:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
         
-        logger.info(f"Downloaded source, cutting clip...")
+        logger.info(f"Downloaded source ({os.path.getsize(temp_source)} bytes), cutting clip...")
         
         # Découper
         duration = end_time - start_time
@@ -256,6 +256,7 @@ class ManualClipService:
         
         if result.returncode != 0:
             # Fallback ré-encodage
+            logger.warning("FFmpeg copy failed, trying re-encode...")
             cmd = [
                 'ffmpeg', '-y',
                 '-ss', str(start_time),
@@ -272,6 +273,7 @@ class ManualClipService:
         # Nettoyer
         try:
             os.remove(temp_source)
+            logger.debug(f"Cleaned up {temp_source}")
         except:
             pass
         
