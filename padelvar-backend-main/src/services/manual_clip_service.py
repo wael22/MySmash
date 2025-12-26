@@ -113,53 +113,49 @@ class ManualClipService:
             clip.status = 'processing'
             db.session.commit()
             
-            
-            # 1. Télécharger la vidéo source
             video = clip.video
             
-            # Si c'est une vidéo Bunny Stream, télécharger via l'API
-            if video.bunny_video_id:
-                logger.info(f"Downloading Bunny Stream video {video.bunny_video_id} via API")
-                source_path = self._download_bunny_video(video.bunny_video_id)
-            elif video.file_url:
-                logger.info(f"Downloading source video from {video.file_url}")
-                source_path = self._download_video(video.file_url)
-            else:
-                raise ValueError("Source video has no file URL or Bunny video ID")
+            if not video.bunny_video_id:
+                raise ValueError("Source video must have a Bunny video ID")
             
-            # 2. Découper la vidéo avec FFmpeg
-            logger.info(f"Cutting clip from {clip.start_time}s to {clip.end_time}s")
-            clip_path = self._cut_video(source_path, clip.start_time, clip.end_time)
+            config = self._get_bunny_config()
             
-            # 3. Générer une miniature
+            # Construire l'URL source Bunny
+            source_url = f"https://{config['cdn_hostname']}/{video.bunny_video_id}/playlist.m3u8"
+            
+            logger.info(f"Creating clip from Bunny Stream URL: {source_url}")
+            logger.info(f"Cutting from {clip.start_time}s to {clip.end_time}s")
+            
+            # Découper directement depuis l'URL (SANS télécharger)
+            clip_path = self._cut_video_from_url(
+                source_url, 
+                clip.start_time, 
+                clip.end_time
+            )
+            
+            # Générer miniature
             logger.info("Generating thumbnail")
             thumbnail_path = self._generate_thumbnail(clip_path)
             
-            # 4. Upload vers Bunny CDN
-            logger.info("Uploading to Bunny CDN")
+            # Upload vers Bunny
+            logger.info("Uploading clip to Bunny CDN")
             clip_url, bunny_video_id = self._upload_to_bunny(
                 clip_path,
                 f"clip_{clip.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
             )
             
-            # 5. Upload de la miniature
-            thumbnail_url = self._upload_thumbnail_to_bunny(
-                thumbnail_path,
-                f"clip_{clip.id}_thumb.jpg"
-            )
-            
-            # 6. Mettre à jour le clip
+            # Mettre à jour le clip
             clip.file_url = clip_url
-            clip.thumbnail_url = thumbnail_url
+            clip.thumbnail_url = thumbnail_path  # Ou None si upload thumbnail pas implémenté
             clip.bunny_video_id = bunny_video_id
             clip.status = 'completed'
             clip.completed_at = datetime.utcnow()
             db.session.commit()
             
-            # 7. Nettoyer les fichiers temporaires
-            self._cleanup_files([source_path, clip_path, thumbnail_path])
+            # Nettoyer fichiers temp
+            self._cleanup_files([clip_path, thumbnail_path])
             
-            logger.info(f"Clip {clip_id} processed successfully")
+            logger.info(f"Clip {clip_id} processed successfully (optimized streaming)")
             return True
             
         except Exception as e:
@@ -219,31 +215,58 @@ class ManualClipService:
         
         return temp_file
     
-    def _cut_video(self, source_path: str, start_time: float, end_time: float) -> str:
-        """Découpe une vidéo avec FFmpeg"""
+    def _cut_video_from_url(self, source_url: str, start_time: float, end_time: float) -> str:
+        """
+        Découpe une vidéo DIRECTEMENT depuis une URL Bunny
+        ✅ OPTIMISÉ : Ne télécharge QUE la portion nécessaire
+        ✅ Utilise -ss AVANT -i pour seek rapide côté serveur
+        """
         output_path = os.path.join(
             self.temp_dir,
             f"clip_{datetime.now().timestamp()}.mp4"
         )
         
-        # Commande FFmpeg pour découper (utilise -c copy pour éviter le ré-encodage)
+        duration = end_time - start_time
+        
+        # Commande FFmpeg optimale
         cmd = [
             'ffmpeg',
-            '-i', source_path,
-            '-ss', str(start_time),
-            '-to', str(end_time),
-            '-c', 'copy',  # Copie sans ré-encodage (plus rapide)
+            '-y',  # Overwrite
+            '-ss', str(start_time),  # ❗ AVANT -i = seek rapide
+            '-i', source_url,  # URL directe
+            '-t', str(duration),  # Durée exacte
+            '-c', 'copy',  # Pas de ré-encodage
+            '-movflags', '+faststart',  # Optimisation web
             '-avoid_negative_ts', 'make_zero',
             output_path
         ]
         
-        logger.debug(f"Running FFmpeg command: {' '.join(cmd)}")
+        logger.info(f"FFmpeg streaming clip: {duration}s from {source_url}")
+        logger.debug(f"Command: {' '.join(cmd)}")
         
         result = subprocess.run(cmd, capture_output=True, text=True)
         
         if result.returncode != 0:
             logger.error(f"FFmpeg error: {result.stderr}")
-            raise RuntimeError(f"FFmpeg failed: {result.stderr}")
+            
+            # Fallback: Si -c copy échoue, ré-encoder
+            logger.warning("Trying with re-encoding fallback...")
+            cmd_reencode = [
+                'ffmpeg',
+                '-y',
+                '-ss', str(start_time),
+                '-i', source_url,
+                '-t', str(duration),
+                '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+                '-c:a', 'aac',
+                '-movflags', '+faststart',
+                output_path
+            ]
+            
+            result = subprocess.run(cmd_reencode, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                raise RuntimeError(f"FFmpeg failed (even with re-encode): {result.stderr}")
         
         return output_path
     
