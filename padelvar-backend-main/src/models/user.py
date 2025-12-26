@@ -61,10 +61,19 @@ class User(db.Model):
     email_verified_at = db.Column(db.DateTime, nullable=True)
     google_id = db.Column(db.String(100), nullable=True, unique=True)  # ID Google pour l'authentification
     
+    # Champs pour la vérification d'email
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)  # Statut de vérification
+    email_verification_token = db.Column(db.String(10), nullable=True)  # Code de vérification
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)  # Date d'envoi du code
+    
     # Champs pour l'authentification à deux facteurs (2FA)
     two_factor_secret = db.Column(db.String(255), nullable=True)  # Secret TOTP chiffré
     two_factor_enabled = db.Column(db.Boolean, default=False)  # Si 2FA est activé
     two_factor_backup_codes = db.Column(db.Text, nullable=True)  # Codes de secours (JSON)
+    
+    # Champs pour le tutoriel
+    tutorial_completed = db.Column(db.Boolean, default=False, nullable=False)  # Tutoriel complété
+    tutorial_step = db.Column(db.Integer, nullable=True)  # Étape actuelle du tutoriel (1-10)
     
     videos = db.relationship('Video', backref='owner', lazy=True, cascade='all, delete-orphan')
     club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=True)
@@ -86,8 +95,11 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'email_verified': self.email_verified,
             'email_verified_at': self.email_verified_at.isoformat() if self.email_verified_at else None,
-            'club_id': self.club_id
+            'club_id': self.club_id,
+            'tutorial_completed': self.tutorial_completed,
+            'tutorial_step': self.tutorial_step
         }
         if self.role == UserRole.CLUB and self.club_id:
             club = Club.query.get(self.club_id)

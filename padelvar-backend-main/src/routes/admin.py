@@ -328,7 +328,7 @@ def create_club():
         new_club = Club(name=data["name"], email=data["email"], address=data.get("address"), phone_number=data.get("phone_number"))
         db.session.add(new_club)
         db.session.flush()
-        club_user = User(email=data["email"], name=data["name"], role=UserRole.CLUB, club_id=new_club.id)
+        club_user = User(email=data["email"], name=data["name"], role=UserRole.CLUB, club_id=new_club.id, email_verified=True, email_verified_at=datetime.utcnow())
         if data.get("password"):
             club_user.password_hash = generate_password_hash(data["password"])
         db.session.add(club_user)
@@ -833,7 +833,7 @@ def admin_stop_recording(recording_id):
                 if upload_status and upload_status.get('bunny_video_id'):
                     new_video.bunny_video_id = upload_status['bunny_video_id']
                     # ✨ NEW: Also update file_url to Bunny CDN URL
-                    new_video.file_url = f"https://vz-82bd892c-344.b-cdn.net/{new_video.bunny_video_id}/play.mp4"
+                    new_video.file_url = f"https://vz-f2c97d0e-5d4.b-cdn.net/{new_video.bunny_video_id}/play.mp4"
                     logger.info(f"✅ Bunny video ID saved: {new_video.bunny_video_id}")
                     logger.info(f"✅ Bunny URL updated: {new_video.file_url}")
                 else:

@@ -8,6 +8,11 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'une-cle-secrete-difficile-a-deviner-CHANGE-IN-PRODUCTION'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # JWT Configuration
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or SECRET_KEY
+    JWT_TOKEN_LOCATION = ['headers']
+    JWT_ACCESS_TOKEN_EXPIRES = 86400  # 24 heures en secondes
+    
     SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_HTTPONLY = True
@@ -90,11 +95,11 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = Config.get_database_uri()
     SQLALCHEMY_ECHO = False  # Set to True pour voir les requêtes SQL
     CORS_ORIGINS = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173"  # Garder pour compatibilité Vite
     ]
     SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_SAMESITE = None  # Pour le développement

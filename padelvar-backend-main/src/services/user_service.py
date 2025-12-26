@@ -43,7 +43,7 @@ class UserService:
             hashed_password = generate_password_hash(new_password)
             
             # Mettre à jour le mot de passe
-            user.password = hashed_password
+            user.password_hash = hashed_password
             db.session.commit()
             
             logger.info(f"✅ Mot de passe mis à jour pour l'utilisateur {user.email}")
@@ -69,7 +69,7 @@ class UserService:
             # Créer le nouvel utilisateur
             new_user = User(
                 email=email,
-                password=hashed_password,
+                password_hash=hashed_password,
                 name=name or email.split('@')[0],
                 role=role
             )
@@ -91,7 +91,7 @@ class UserService:
             if not user:
                 return False
             
-            return check_password_hash(user.password, password)
+            return check_password_hash(user.password_hash, password)
             
         except Exception as e:
             logger.error(f"❌ Erreur lors de la vérification du mot de passe: {str(e)}")

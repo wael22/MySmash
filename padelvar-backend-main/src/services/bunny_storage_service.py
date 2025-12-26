@@ -24,9 +24,9 @@ class BunnyStorageConfig:
     """Configuration centralisée pour Bunny Storage"""
     
     def __init__(self):
-        self.api_key = os.environ.get('BUNNY_API_KEY', '9a360005-dbf3-4b6c-b57bdaac8d37-2ac0-444d')
-        self.library_id = os.environ.get('BUNNY_LIBRARY_ID', '555438')
-        self.cdn_hostname = os.environ.get('BUNNY_CDN_HOSTNAME', 'vz-82bd892c-344.b-cdn.net')
+        self.api_key = os.environ.get('BUNNY_API_KEY', 'dea74bd3-cb95-40f6-8b25e0cb6901-c108-4bf1')
+        self.library_id = os.environ.get('BUNNY_LIBRARY_ID', '475694')
+        self.cdn_hostname = os.environ.get('BUNNY_CDN_HOSTNAME', 'vz-f2c97d0e-5d4.b-cdn.net')
         
         # URLs API
         self.api_base_url = f"https://video.bunnycdn.com/library/{self.library_id}"

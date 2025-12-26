@@ -3,13 +3,20 @@
 from flask import Blueprint, request, jsonify, session, make_response, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..models.user import User, UserRole, Club  # Ajout de l'import Club pour la synchronisation
+from ..models.system_settings import SystemSettings
 from ..models.database import db
 from ..services.google_auth_service import verify_google_token, get_google_tokens, get_google_user_info
+from ..services.email_verification_service import (
+    generate_verification_code,
+    send_verification_email,
+    verify_email_code
+)
 import re
 import traceback
 import logging # Ajout du logger
 import os
 import json
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +33,6 @@ def validate_email(email):
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    # ... (code de la fonction register inchangé)
     try:
         data = request.get_json()
         if not data or not data.get('email') or not data.get('password') or not data.get('name'):
@@ -42,18 +48,36 @@ def register():
             return jsonify({'error': 'Un utilisateur avec cet email existe déjà'}), 409
         if len(password) < 6:
             return jsonify({'error': 'Le mot de passe doit contenir au moins 6 caractères'}), 400
+        
         password_hash = generate_password_hash(password)
+        
+        # Générer le code de vérification
+        verification_code = generate_verification_code()
+        
         new_user = User(
-            email=email, password_hash=password_hash, name=name,
+            email=email, 
+            password_hash=password_hash, 
+            name=name,
             phone_number=phone_number if phone_number else None,
-            role=UserRole.PLAYER, credits_balance=5
+            role=UserRole.PLAYER, 
+            credits_balance=SystemSettings.get_welcome_credits(),
+            email_verified=False,  # Pas encore vérifié
+            email_verification_token=verification_code,
+            email_verification_sent_at=datetime.utcnow()
         )
         db.session.add(new_user)
         db.session.commit()
-        session.permanent = True
-        session['user_id'] = new_user.id
-        session['user_role'] = new_user.role.value
-        response = make_response(jsonify({'message': 'Inscription réussie', 'user': new_user.to_dict()}), 201)
+        
+        # Envoyer l'email de vérification
+        send_verification_email(email, verification_code, name)
+        
+        logger.info(f"✅ Nouvel utilisateur créé: {email} - En attente de vérification")
+        
+        response = make_response(jsonify({
+            'message': 'Inscription réussie. Veuillez vérifier votre email.',
+            'email': email,
+            'requires_verification': True
+        }), 201)
         return response
     except Exception as e:
         db.session.rollback()
@@ -63,7 +87,6 @@ def register():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    # ... (code de la fonction login inchangé)
     try:
         data = request.get_json()
         if not data or not data.get('email') or not data.get('password'):
@@ -81,6 +104,16 @@ def login():
         
         if not user or not user.password_hash or not check_password_hash(user.password_hash, password):
             return jsonify({'error': 'Email ou mot de passe incorrect'}), 401
+        
+        # Vérifier que l'email est vérifié (sauf pour Google OAuth)
+        if not user.email_verified and not user.google_id:
+            logger.warning(f"⚠️ Tentative de connexion avec email non vérifié: {email}")
+            return jsonify({
+                'error': 'Veuillez vérifier votre adresse email avant de vous connecter.',
+                'requires_verification': True,
+                'email': email
+            }), 403
+        
         session.permanent = True
         session['user_id'] = user.id
         session['user_role'] = user.role.value
@@ -93,10 +126,64 @@ def login():
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
-    # ... (code de la fonction logout inchangé)
-    session.clear()
-    response = make_response(jsonify({'message': 'Déconnexion réussie'}), 200)
-    return response
+    """Déconnexion avec nettoyage des enregistrements actifs"""
+    try:
+        user_id = session.get('user_id')
+        
+        # 🎬 ARRÊTER LES ENREGISTREMENTS ACTIFS AVANT DÉCONNEXION
+        if user_id:
+            from ..models.user import RecordingSession, Court
+            from ..video_system.session_manager import session_manager
+            from ..video_system.recording import video_recorder
+            from datetime import datetime
+            
+            # Trouver tous les enregistrements actifs de cet utilisateur
+            active_recordings = RecordingSession.query.filter_by(
+                user_id=user_id,
+                status='active'
+            ).all()
+            
+            if active_recordings:
+                logger.info(f"🛑 Logout: {len(active_recordings)} enregistrement(s) actif(s) pour user {user_id}")
+                
+                for recording in active_recordings:
+                    try:
+                        # Arrêter l'enregistrement
+                        logger.info(f"   Arrêt enregistrement {recording.recording_id}")
+                        video_file_path = video_recorder.stop_recording(recording.recording_id)
+                        
+                        # Fermer la session
+                        session_manager.close_session(recording.recording_id)
+                        
+                        # Mettre à jour le statut
+                        recording.status = 'stopped'
+                        recording.end_time = datetime.utcnow()
+                        recording.stopped_by = 'logout'
+                        
+                        # Libérer le terrain
+                        if recording.court_id:
+                            court = Court.query.get(recording.court_id)
+                            if court:
+                                court.is_recording = False
+                                court.current_recording_id = None
+                        
+                        logger.info(f"   ✅ Enregistrement {recording.recording_id} arrêté (logout)")
+                        
+                    except Exception as e:
+                        logger.error(f"   ❌ Erreur arrêt enregistrement {recording.recording_id}: {e}")
+                
+                db.session.commit()
+        
+        # Nettoyer la session
+        session.clear()
+        response = make_response(jsonify({'message': 'Déconnexion réussie'}), 200)
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur lors du logout: {e}")
+        # Même en cas d'erreur, déconnecter l'utilisateur
+        session.clear()
+        return jsonify({'message': 'Déconnexion effectuée'}), 200
 
 
 @auth_bp.route('/me', methods=['GET'])
@@ -222,7 +309,7 @@ def google_callback():
             return jsonify({'error': 'Échec d\'obtention des informations utilisateur'}), 401
             
         # Redirection vers le frontend avec un code temporaire pour compléter l'authentification
-        frontend_callback_url = f"http://localhost:5173/google-auth-callback?token={id_token}"
+        frontend_callback_url = f"http://localhost:3000/google-auth-callback?token={id_token}"
         return redirect(frontend_callback_url)
         
     except Exception as e:
@@ -261,7 +348,9 @@ def google_authenticate():
                 name=user_info.get('name', email.split('@')[0]),
                 google_id=user_info['google_id'],
                 role=UserRole.PLAYER,
-                credits_balance=5  # Crédits par défaut pour les nouveaux utilisateurs
+                credits_balance=SystemSettings.get_welcome_credits(),
+                email_verified=True,  # Auto-vérifier les utilisateurs Google
+                email_verified_at=datetime.utcnow()
             )
             db.session.add(user)
             db.session.commit()
@@ -321,3 +410,97 @@ def require_admin(f):
             return jsonify({'error': 'Privilèges administrateur requis'}), 403
         return f(*args, **kwargs)
     return decorated_function
+
+
+# ====================================================================
+# ROUTES DE VÉRIFICATION D'EMAIL
+# ====================================================================
+
+@auth_bp.route('/verify-email', methods=['POST'])
+def verify_email():
+    """Vérifie l'email d'un utilisateur avec le code reçu par email"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+        code = data.get('code', '').strip()
+        
+        if not email or not code:
+            return jsonify({'error': 'Email et code de vérification requis'}), 400
+        
+        # Récupérer l'utilisateur
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'Utilisateur non trouvé'}), 404
+        
+        # Vérifier le code
+        result = verify_email_code(user, code)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+        
+        # Marquer l'email comme vérifié
+        user.email_verified = True
+        user.email_verified_at = datetime.utcnow()
+        user.email_verification_token = None  # Supprimer le code
+        user.email_verification_sent_at = None
+        db.session.commit()
+        
+        # Connecter automatiquement l'utilisateur
+        session.permanent = True
+        session['user_id'] = user.id
+        session['user_role'] = user.role.value
+        
+        logger.info(f"✅ Email vérifié et utilisateur connecté: {email}")
+        
+        return jsonify({
+            'message': 'Email vérifié avec succès',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ Erreur lors de la vérification de l'email: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': 'Erreur lors de la vérification'}), 500
+
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Renvoie un nouveau code de vérification"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+        
+        if not email:
+            return jsonify({'error': 'Email requis'}), 400
+        
+        # Récupérer l'utilisateur
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            # Ne pas révéler si l'email existe ou non (sécurité)
+            return jsonify({'message': 'Si cet email existe, un nouveau code a été envoyé'}), 200
+        
+        # Vérifier si déjà vérifié
+        if user.email_verified:
+            return jsonify({'error': 'Cet email est déjà vérifié'}), 400
+        
+        # Générer un nouveau code
+        verification_code = generate_verification_code()
+        user.email_verification_token = verification_code
+        user.email_verification_sent_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Envoyer le nouveau code
+        send_verification_email(email, verification_code, user.name)
+        
+        logger.info(f"📧 Nouveau code de vérification envoyé à {email}")
+        
+        return jsonify({
+            'message': 'Un nouveau code de vérification a été envoyé à votre email'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ Erreur lors du renvoi du code: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': 'Erreur lors du renvoi du code'}), 500

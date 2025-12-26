@@ -25,14 +25,15 @@ def add_email_verification_fields():
         else:
             print("ℹ️  Colonne 'email_verified' existe déjà")
         
-        # Ajouter email_verification_token
+        # Ajouter email_verification_token (sans UNIQUE car SQLite ne le supporte pas sur ALTER TABLE)
         if 'email_verification_token' not in columns:
             cursor.execute("""
-                ALTER TABLE user ADD COLUMN email_verification_token TEXT UNIQUE
+                ALTER TABLE user ADD COLUMN email_verification_token TEXT
             """)
             print("✅ Colonne 'email_verification_token' ajoutée")
         else:
             print("ℹ️  Colonne 'email_verification_token' existe déjà")
+
         
         # Ajouter email_verification_sent_at
         if 'email_verification_sent_at' not in columns:

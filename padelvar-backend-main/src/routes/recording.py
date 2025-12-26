@@ -145,6 +145,15 @@ def start_recording_with_duration():
         # Générer un ID unique pour l'enregistrement
         recording_id = f"rec_{user.id}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
         
+        # Récupérer le club pour le titre
+        club = Club.query.get(court.club_id)
+        
+        # Générer le titre par défaut: "date/club/terrain"
+        if not title:
+            date_str = datetime.now().strftime("%d/%m/%Y")
+            club_name = club.name if club else "Club"
+            title = f"{date_str}/{club_name}/{court.name}"
+        
         # Créer la session d'enregistrement
         recording_session = RecordingSession(
             recording_id=recording_id,
@@ -152,7 +161,7 @@ def start_recording_with_duration():
             court_id=court_id,
             club_id=court.club_id,
             planned_duration=planned_duration,
-            title=title or f'Match du {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+            title=title,
             description=description,
             status='active'
         )
@@ -314,6 +323,23 @@ def _stop_recording_session(recording_session, stopped_by, performed_by_id):
             file_url=f'/videos/rec_{recording_session.recording_id}.mp4',
             is_unlocked=True
         )
+        
+        # 📦 Calculer la taille du fichier si disponible
+        try:
+            # Chemins possibles pour le fichier vidéo
+            possible_paths = [
+                f"static/videos/{recording_session.club_id}/{recording_session.recording_id}.mp4",
+                f"static/videos/{recording_session.recording_id}.mp4"
+            ]
+            
+            for video_path in possible_paths:
+                if os.path.exists(video_path):
+                    file_size = os.path.getsize(video_path)
+                    video.file_size = file_size
+                    logger.info(f"📦 Taille fichier vidéo: {file_size / (1024*1024):.2f} MB")
+                    break
+        except Exception as e:
+            logger.warning(f"⚠️ Impossible de calculer la taille du fichier: {e}")
         
         db.session.add(video)
         
@@ -655,6 +681,13 @@ def start_recording_v3():
         
         logger.info(f"🎬 V3 Adapter: Nouvelle demande d'enregistrement - Terrain {court_id}")
         
+        # 💳 VÉRIFIER LES CRÉDITS AVANT DE DÉMARRER
+        if user.credits_balance < 1:
+            return jsonify({
+                'success': False,
+                'error': 'Crédits insuffisants. Vous devez avoir au moins 1 crédit pour démarrer un enregistrement.'
+            }), 400
+        
         # 1. Créer session caméra
         try:
             session = session_manager.create_session(
@@ -691,20 +724,19 @@ def start_recording_v3():
             from datetime import datetime
             
             try:
-                # 💳 VÉRIFIER ET DÉBITER LES CRÉDITS
-                if user.credits_balance < 1:
-                    # Arrêter et nettoyer si pas de crédits
-                    video_recorder.stop_recording(session.session_id)
-                    session_manager.close_session(session.session_id)
-                    return jsonify({
-                        'success': False,
-                        'error': 'Crédits insuffisants. Vous devez avoir au moins 1 crédit pour démarrer un enregistrement.'
-                    }), 400
-                
+                # 💳 DÉBITER 1 CRÉDIT (déjà vérifié avant)
                 # Débiter 1 crédit
                 user.credits_balance -= 1
                 logger.info(f"💳 Crédit déduit: Nouveau solde = {user.credits_balance}")
 
+                
+                # Récupérer le club pour le titre
+                club = Club.query.get(court.club_id)
+                
+                # Générer le titre par défaut: "date/club/terrain"
+                date_str = datetime.now().strftime("%d/%m/%Y")
+                club_name = club.name if club else "Club"
+                default_title = f"{date_str}/{club_name}/{court.name}"
                 
                 # Créer une entrée RecordingSession pour le suivi
                 recording_session = RecordingSession(
@@ -714,7 +746,7 @@ def start_recording_v3():
                     club_id=court.club_id,
                     planned_duration=duration_minutes,
                     status='active',
-                    title=f'Enregistrement {court.name}'
+                    title=default_title
                 )
                 db.session.add(recording_session)
                 

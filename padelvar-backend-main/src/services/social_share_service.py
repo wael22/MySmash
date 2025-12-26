@@ -133,12 +133,12 @@ class SocialShareService:
         
         meta = {
             'og:title': clip.title,
-            'og:description': clip.description or f"Clip de {clip.duration}s - PadelVar",
+            'og:description': clip.description or f"Clip de {clip.duration}s - MySmash",
             'og:type': 'video.other',
             'og:url': f"{self.app_base_url}/clips/{clip_id}",
             'og:video': clip.file_url,
             'og:video:type': 'video/mp4',
-            'og:site_name': 'PadelVar',
+            'og:site_name': 'MySmash',
         }
         
         if clip.thumbnail_url:

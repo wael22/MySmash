@@ -7,6 +7,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash
 from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 
 # Importations relatives corrigées
 from .config import DevelopmentConfig, ProductionConfig, Config
@@ -43,7 +44,9 @@ from .routes.support import support_bp  # 🆕 Support messages
 from .routes.notifications import notifications_bp  # 🆕 Notifications system
 from .routes.video_sharing_routes import video_sharing_bp  # 🆕 Video sharing between users
 from .routes.analytics_routes import analytics_bp  # 🆕 Analytics dashboard
+from .routes.system_settings_routes import system_settings_bp  # 🆕 System settings
 from .routes.clip_routes import clip_bp  # 🆕 Manual clip creation and social sharing
+from .routes.tutorial_routes import tutorial_bp  # 🆕 Tutorial system for new players
 
 def create_app(config_name=None):
     """
@@ -88,6 +91,7 @@ def create_app(config_name=None):
     # Initialisation des extensions
     db.init_app(app)
     migrate = Migrate(app, db)
+    jwt = JWTManager(app)
     
     # Configuration CORS
     CORS(app, 
@@ -100,6 +104,7 @@ def create_app(config_name=None):
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(super_admin_auth_bp, url_prefix='/api/auth/super-admin')  # 🆕 Auth super admin
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(system_settings_bp)  # Settings admin (prefix in blueprint)
     app.register_blueprint(videos_bp, url_prefix='/api/videos')  # Réactivé pour les vidéos
     app.register_blueprint(clubs_bp, url_prefix='/api/clubs')
     app.register_blueprint(all_clubs_bp, url_prefix='/api/all-clubs')
@@ -118,6 +123,7 @@ def create_app(config_name=None):
     app.register_blueprint(video_sharing_bp, url_prefix='/api/videos')  # 🆕 Video sharing
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')  # 🆕 Analytics dashboard
     app.register_blueprint(clip_bp)  # 🆕 Manual clips (prefix in blueprint)
+    app.register_blueprint(tutorial_bp, url_prefix='/api/tutorial')  # 🆕 Tutorial system
     app.register_blueprint(password_reset_bp)
     # Frontend blueprint en dernier pour éviter d'intercepter les routes API
     app.register_blueprint(frontend_bp)

@@ -14,7 +14,7 @@ class BunnyConfig:
     DEFAULT_CONFIG = {
         'api_key': '9a360005-dbf3-4b6c-b57bdaac8d37-2ac0-444d',
         'library_id': '555438',
-        'cdn_hostname': 'vz-82bd892c-344.b-cdn.net',
+        'cdn_hostname': 'vz-f2c97d0e-5d4.b-cdn.net',
         'storage_zone': 'padel-videos',
         'timeout': 300,  # 5 minutes
         'max_retries': 3,

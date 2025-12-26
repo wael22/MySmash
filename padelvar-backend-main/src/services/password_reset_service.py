@@ -23,9 +23,9 @@ SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
-SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@padelvar.com')
+SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', 'noreply@mysmash.tn')
 BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:5000')
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 def generate_reset_token(user_id, email):
     """Génère un token JWT pour la réinitialisation du mot de passe"""
@@ -99,14 +99,14 @@ def send_password_reset_email(email, token):
         msg = MIMEMultipart()
         msg['From'] = SMTP_FROM_EMAIL
         msg['To'] = email
-        msg['Subject'] = "PadelVar - Réinitialisation de votre mot de passe"
+        msg['Subject'] = "MySmash - Réinitialisation de votre mot de passe"
         
         # Corps du message HTML
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e9e9e9; border-radius: 5px;">
-                <h2 style="color: #333;">Réinitialisation de votre mot de passe PadelVar</h2>
+                <h2 style="color: #333;">Réinitialisation de votre mot de passe MySmash</h2>
                 <p>Vous avez demandé la réinitialisation de votre mot de passe. Veuillez cliquer sur le lien ci-dessous pour créer un nouveau mot de passe :</p>
                 <p style="margin: 25px 0;">
                     <a href="{reset_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">
@@ -115,7 +115,7 @@ def send_password_reset_email(email, token):
                 </p>
                 <p>Ce lien expirera dans 1 heure.</p>
                 <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email.</p>
-                <p>Cordialement,<br>L'équipe PadelVar</p>
+                <p>Cordialement,<br>L'équipe MySmash</p>
             </div>
         </body>
         </html>
@@ -203,6 +203,15 @@ def reset_password(token, new_password, user_service):
         result = user_service.update_password(user.id, new_password)
         
         if result:
+            # Auto-vérifier l'email lors du reset (si l'utilisateur a accès à l'email, il le contrôle)
+            if not user.email_verified:
+                from ..models.database import db
+                user.email_verified = True
+                user.email_verified_at = datetime.datetime.utcnow()
+                user.email_verification_token = None
+                db.session.commit()
+                logger.info(f"📧 Email auto-vérifié lors du reset de mot de passe pour {user.email}")
+            
             logger.info(f"✅ Mot de passe réinitialisé avec succès pour {user.email}")
         else:
             logger.error(f"❌ Échec de la mise à jour du mot de passe pour {user.email}")

@@ -5,11 +5,10 @@ All routes require super admin authentication
 """
 
 import logging
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from functools import wraps
 from src.models.user import User, UserRole
 from src.services import analytics_service
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +16,16 @@ analytics_bp = Blueprint('analytics', __name__)
 
 
 def require_super_admin(f):
-    """Decorator to require super admin role"""
+    """Decorator to require super admin role (session-based auth)"""
     @wraps(f)
-    @jwt_required()
     def decorated_function(*args, **kwargs):
         try:
-            user_id = get_jwt_identity()
+            user_id = session.get('user_id')
+            
+            if not user_id:
+                logger.warning(f"Unauthorized analytics access attempt - no session")
+                return jsonify({'error': 'Authentication required'}), 401
+            
             user = User.query.get(user_id)
             
             if not user or user.role != UserRole.SUPER_ADMIN:
@@ -32,7 +35,7 @@ def require_super_admin(f):
             return f(*args, **kwargs)
         except Exception as e:
             logger.error(f"Error in super admin check: {e}")
-            return jsonify({'error': 'Authentication error'}), 401
+            return jsonify({'error': 'Authentication error'}), 500
     
     return decorated_function
 

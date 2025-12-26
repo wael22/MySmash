@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import db, User, Club, Court, UserRole, ClubActionHistory, Video, RecordingSession
+from src.models.system_settings import SystemSettings
 from src.models.notification import Notification, NotificationType
 from src.routes.admin import log_club_action
 from datetime import datetime, timedelta
@@ -652,13 +653,28 @@ def buy_club_credits():
         if credits_amount <= 0:
             return jsonify({'error': 'Le montant de crédits doit être positif'}), 400
         
-        # Packages de crédits pour les clubs (prix en DT)
-        packages = {
-            100: 700,
-            500: 3000,
-            1000: 5500,
-            5000: 25000
-        }
+        # Charger les packages depuis la base de données
+        from src.models.credit_package import CreditPackage
+        
+        # Récupérer les packages clubs actifs
+        db_packages = CreditPackage.query.filter_by(
+            package_type='club',
+            is_active=True
+        ).all()
+        
+        # Construire le dictionnaire de packages (credits -> price_dt)
+        packages = {}
+        for pkg in db_packages:
+            packages[pkg.credits] = pkg.price_dt
+        
+        # Si aucun package en DB, utiliser les packages par défaut
+        if not packages:
+            packages = {
+                100: 700,
+                500: 3000,
+                1000: 5500,
+                5000: 25000
+            }
         
         if credits_amount not in packages:
             return jsonify({'error': f'Package invalide. Packages disponibles : {list(packages.keys())}'}), 400
@@ -1187,7 +1203,7 @@ def force_create_test_data():
                     name=f"External Follower {i}",
                     password_hash=generate_password_hash('password123'),
                     role=UserRole.PLAYER,
-                    credits_balance=5
+                    credits_balance=SystemSettings.get_welcome_credits()
                     # Pas de club_id pour les externes
                 )
                 db.session.add(follower)
@@ -1368,7 +1384,7 @@ def create_test_data():
                     password_hash=generate_password_hash('password123'),
                     role=UserRole.PLAYER,
                     club_id=club_id,
-                    credits_balance=5
+                    credits_balance=SystemSettings.get_welcome_credits()
                 )
                 db.session.add(player)
                 players_data.append({'name': player.name, 'created': True})
