@@ -21,10 +21,20 @@ class ManualClipService:
     """Service pour gérer la création manuelle de clips vidéo"""
     
     def __init__(self):
-        self.bunny_api_key = BUNNY_CONFIG['api_key']
-        self.bunny_library_id = BUNNY_CONFIG['library_id']
-        self.bunny_cdn_hostname = BUNNY_CONFIG['cdn_hostname']
         self.temp_dir = tempfile.gettempdir()
+    
+    def _get_bunny_config(self):
+        """Charge la config Bunny depuis la DB (comme bunny_storage_service)"""
+        try:
+            from src.models.system_configuration import SystemConfiguration
+            config = SystemConfiguration.get_bunny_config()
+            if config and config.get('api_key'):
+                return config
+        except Exception as e:
+            logger.warning(f"Could not load Bunny config from DB: {e}")
+        
+        # Fallback sur BUNNY_CONFIG
+        return BUNNY_CONFIG
     
     def create_clip(
         self,
@@ -165,8 +175,9 @@ class ManualClipService:
         Utilise l'API Key pour l'authentification (pas de 403)
         """
         # 1. Récupérer les informations de la vidéo via l'API
-        api_url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}"
-        headers = {'AccessKey': self.bunny_api_key}
+        config = self._get_bunny_config()
+        api_url = f"https://video.bunnycdn.com/library/{config['library_id']}/videos/{video_id}"
+        headers = {'AccessKey': config['api_key']}
         
         logger.info(f"Fetching video info from Bunny API: {video_id}")
         response = requests.get(api_url, headers=headers)
@@ -177,7 +188,7 @@ class ManualClipService:
         # 2. Construire l'URL de téléchargement MP4
         # Bunny Stream stocke les vidéos encodées, on prend la meilleure qualité
         # L'URL de téléchargement direct nécessite l'API key
-        download_url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}/mp4/original"
+        download_url = f"https://video.bunnycdn.com/library/{config['library_id']}/videos/{video_id}/mp4/original"
         
         logger.info(f"Downloading video from Bunny API")
         
@@ -272,11 +283,12 @@ class ManualClipService:
         # Pour Bunny Stream, on utilise leur API d'upload
         # Documentation: https://docs.bunny.net/reference/video_createvideo
         
-        url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos"
+        config = self._get_bunny_config()
+        url = f"https://video.bunnycdn.com/library/{config['library_id']}/videos"
         
         # 1. Créer la vidéo
         headers = {
-            'AccessKey': self.bunny_api_key,
+            'AccessKey': config['api_key'],
             'Content-Type': 'application/json'
         }
         
@@ -291,18 +303,18 @@ class ManualClipService:
         video_id = video_data['guid']
         
         # 2. Upload le fichier
-        upload_url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}"
+        upload_url = f"https://video.bunnycdn.com/library/{config['library_id']}/videos/{video_id}"
         
         with open(file_path, 'rb') as f:
             upload_response = requests.put(
                 upload_url,
-                headers={'AccessKey': self.bunny_api_key},
+                headers={'AccessKey': config['api_key']},
                 data=f
             )
             upload_response.raise_for_status()
         
         # 3. Construire l'URL de lecture
-        video_url = f"https://{self.bunny_cdn_hostname}/{video_id}/playlist.m3u8"
+        video_url = f"https://{config['cdn_hostname']}/{video_id}/playlist.m3u8"
         
         return video_url, video_id
     
@@ -360,11 +372,12 @@ class ManualClipService:
     
     def _delete_from_bunny(self, video_id: str):
         """Supprime une vidéo de Bunny Stream"""
-        url = f"https://video.bunnycdn.com/library/{self.bunny_library_id}/videos/{video_id}"
+        config = self._get_bunny_config()
+        url = f"https://video.bunnycdn.com/library/{config['library_id']}/videos/{video_id}"
         
         response = requests.delete(
             url,
-            headers={'AccessKey': self.bunny_api_key}
+            headers={'AccessKey': config['api_key']}
         )
         response.raise_for_status()
     
