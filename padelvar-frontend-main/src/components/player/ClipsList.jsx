@@ -285,8 +285,10 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
                             )}
 
                             {clip.status === 'failed' && clip.error_message && (
-                                <div className="text-xs text-red-500">
-                                    Erreur: {clip.error_message}
+                                <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                                    <span className="font-medium">⚠️ Erreur:</span>{' '}
+                                    {clip.error_message.split('\n')[0].substring(0, 100)}
+                                    {clip.error_message.length > 100 && '...'}
                                 </div>
                             )}
                         </CardContent>
