@@ -79,9 +79,7 @@ class ManualClipService:
         if not video:
             raise ValueError("Video not found")
         
-        # Vérifier que l'utilisateur est le propriétaire
-        if video.user_id != user_id:
-            raise ValueError("User does not own this video")
+        # Pas de restriction - tous les utilisateurs peuvent créer des clips
         
         # Valider les timestamps
         if start_time < 0 or end_time <= start_time:
