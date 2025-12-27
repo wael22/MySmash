@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import clipService from '@/services/clipService';
 import SocialShareModal from './SocialShareModal';
+import BunnyVideoPlayerModal from './BunnyVideoPlayerModal';
 
 const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
     const [clips, setClips] = useState([]);
@@ -27,6 +28,8 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
     const [selectedClip, setSelectedClip] = useState(null);
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [deletingClipId, setDeletingClipId] = useState(null);
+    const [playerModalOpen, setPlayerModalOpen] = useState(false);
+    const [playingClip, setPlayingClip] = useState(null);
 
     useEffect(() => {
         loadClips();
@@ -76,6 +79,11 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
     const handleShare = (clip) => {
         setSelectedClip(clip);
         setShareModalOpen(true);
+    };
+
+    const handlePlay = (clip) => {
+        setPlayingClip(clip);
+        setPlayerModalOpen(true);
     };
 
     const handleDownload = async (clip) => {
@@ -230,37 +238,49 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
 
                             {/* Actions */}
                             {clip.status === 'completed' && (
-                                <div className="flex gap-2">
+                                <div className="space-y-2">
+                                    {/* Bouton Play principal */}
                                     <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1"
-                                        onClick={() => handleShare(clip)}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                                        onClick={() => handlePlay(clip)}
                                     >
-                                        <Share2 className="h-4 w-4 mr-1" />
-                                        Partager
+                                        <Play className="h-4 w-4 mr-2 fill-white" />
+                                        Regarder le clip
                                     </Button>
 
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleDownload(clip)}
-                                    >
-                                        <Download className="h-4 w-4" />
-                                    </Button>
+                                    {/* Boutons secondaires */}
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => handleShare(clip)}
+                                        >
+                                            <Share2 className="h-4 w-4 mr-1" />
+                                            Partager
+                                        </Button>
 
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleDelete(clip.id)}
-                                        disabled={deletingClipId === clip.id}
-                                    >
-                                        {deletingClipId === clip.id ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Trash2 className="h-4 w-4 text-red-500" />
-                                        )}
-                                    </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDownload(clip)}
+                                        >
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDelete(clip.id)}
+                                            disabled={deletingClipId === clip.id}
+                                        >
+                                            {deletingClipId === clip.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
 
@@ -283,6 +303,24 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
                 }}
                 clip={selectedClip}
             />
+
+            {/* Modal de lecture vidéo */}
+            {playingClip && (
+                <BunnyVideoPlayerModal
+                    isOpen={playerModalOpen}
+                    onClose={() => {
+                        setPlayerModalOpen(false);
+                        setPlayingClip(null);
+                    }}
+                    video={{
+                        id: playingClip.video_id,
+                        bunny_video_id: playingClip.bunny_video_id,
+                        title: playingClip.title,
+                        file_url: playingClip.file_url
+                    }}
+                    autoplay={true}
+                />
+            )}
         </>
     );
 };
