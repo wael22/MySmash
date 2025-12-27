@@ -66,7 +66,7 @@ class FFmpegService {
         }
 
         try {
-            const inputName = 'input.mp4';
+            const inputName = 'input.webm'; // WebM from MediaRecorder
             const outputName = 'output.mp4';
             const duration = end - start;
 
@@ -80,13 +80,16 @@ class FFmpegService {
                 });
             }
 
-            // Run FFmpeg command
+            // Re-encode WebM to MP4 (VP8→H.264)
             await this.ffmpeg.exec([
                 '-ss', start.toString(),
                 '-i', inputName,
                 '-t', duration.toString(),
-                '-c', 'copy', // Fast copy, no re-encode
-                '-avoid_negative_ts', 'make_zero',
+                '-c:v', 'libx264',      // H.264 video
+                '-preset', 'ultrafast', // Fast encoding
+                '-crf', '23',           // Quality
+                '-c:a', 'aac',          // AAC audio
+                '-b:a', '128k',
                 outputName
             ]);
 
