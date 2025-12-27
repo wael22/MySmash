@@ -39,18 +39,16 @@ class ManualClipService:
                 return config
             else:
                 if api_key:
-                    logger.warning(f"⚠️ DB API key too long ({len(api_key)} chars), likely encrypted. Using .env fallback")
+                    logger.warning(f"⚠️ DB API key too long ({len(api_key)} chars), likely encrypted. Using fallback")
         except Exception as e:
             logger.warning(f"Could not load Bunny config from DB: {e}")
         
-        # Fallback sur .env
-        fallback_config = {
-            'api_key': os.getenv('BUNNY_STREAM_API_KEY', ''),
-            'library_id': os.getenv('BUNNY_STREAM_LIBRARY_ID', ''),
-            'cdn_hostname': os.getenv('BUNNY_CDN_HOSTNAME', ''),
-            'storage_zone': os.getenv('BUNNY_STORAGE_ZONE', '')
-        }
-        logger.info(f"✅ Using Bunny config from .env fallback (api_key length: {len(fallback_config['api_key'])})")
+        # Fallback : utiliser BunnyConfig qui charge depuis .env AVEC fallback hardcodé
+        from src.config.bunny_config import BunnyConfig
+        fallback_config = BunnyConfig.load_config()
+        
+        api_key_len = len(fallback_config.get('api_key', ''))
+        logger.info(f"✅ Using Bunny config from BunnyConfig fallback (api_key length: {api_key_len})")
         return fallback_config
     
     def create_clip(
