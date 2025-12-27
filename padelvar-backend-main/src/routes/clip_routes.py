@@ -142,7 +142,9 @@ def upload_direct_clip(current_user):
         if not video:
             return jsonify({'error': 'Video not found'}), 404
         
-        if video.user_id != current_user.id and video.club_id != current_user.club_id:
+        # Autoriser si vidéo appartient à l'utilisateur OU si même club (via court)
+        video_club_id = video.court.club_id if video.court else None
+        if video.user_id != current_user.id and video_club_id != current_user.club_id:
             return jsonify({'error': 'Unauthorized - not your video or club'}), 403
         
         # Créer le clip en DB (status pending)
