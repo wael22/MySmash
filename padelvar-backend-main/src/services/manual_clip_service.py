@@ -28,10 +28,18 @@ class ManualClipService:
         try:
             from src.models.system_configuration import SystemConfiguration
             config = SystemConfiguration.get_bunny_cdn_config()  # ✅ Correct method name
-            if config and config.get('api_key'):
-                logger.info(f"Using Bunny config from DB (api_key length: {len(config.get('api_key', ''))})")
-                # L'API key peut ne pas être chiffrée, utiliser comme tel
+            
+            # Vérifier si l'API key est valide (non chiffrée)
+            api_key = config.get('api_key', '') if config else ''
+            
+            # Une API key Bunny valide fait ~40-60 chars
+            # Si >100 = probablement chiffrée → rejeter
+            if api_key and len(api_key) < 100:
+                logger.info(f"✅ Using Bunny config from DB (api_key length: {len(api_key)})")
                 return config
+            else:
+                if api_key:
+                    logger.warning(f"⚠️ DB API key too long ({len(api_key)} chars), likely encrypted. Using .env fallback")
         except Exception as e:
             logger.warning(f"Could not load Bunny config from DB: {e}")
         
@@ -42,7 +50,7 @@ class ManualClipService:
             'cdn_hostname': os.getenv('BUNNY_CDN_HOSTNAME', ''),
             'storage_zone': os.getenv('BUNNY_STORAGE_ZONE', '')
         }
-        logger.info(f"Using Bunny config from .env fallback (api_key length: {len(fallback_config['api_key'])})")
+        logger.info(f"✅ Using Bunny config from .env fallback (api_key length: {len(fallback_config['api_key'])})")
         return fallback_config
     
     def create_clip(
