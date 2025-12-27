@@ -10,10 +10,10 @@ from typing import Dict, Any
 class BunnyConfig:
     """Configuration Bunny CDN avec validation et optimisations"""
     
-    # Configuration par défaut
+    # Configuration par défaut (sync avec bunny_storage_service.py L27-29)
     DEFAULT_CONFIG = {
-        'api_key': '9a360005-dbf3-4b6c-b57bdaac8d37-2ac0-444d',
-        'library_id': '555438',
+        'api_key': 'dea74bd3-cb95-40f6-8b25e0cb6901-c108-4bf1',
+        'library_id': '475694',
         'cdn_hostname': 'vz-f2c97d0e-5d4.b-cdn.net',
         'storage_zone': 'padel-videos',
         'timeout': 300,  # 5 minutes
