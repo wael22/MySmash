@@ -29,13 +29,21 @@ class ManualClipService:
             from src.models.system_configuration import SystemConfiguration
             config = SystemConfiguration.get_bunny_cdn_config()  # ✅ Correct method name
             if config and config.get('api_key'):
+                logger.info(f"Using Bunny config from DB (api_key length: {len(config.get('api_key', ''))})")
                 # L'API key peut ne pas être chiffrée, utiliser comme tel
                 return config
         except Exception as e:
             logger.warning(f"Could not load Bunny config from DB: {e}")
         
-        # Fallback sur BUNNY_CONFIG
-        return BUNNY_CONFIG
+        # Fallback sur .env
+        fallback_config = {
+            'api_key': os.getenv('BUNNY_STREAM_API_KEY', ''),
+            'library_id': os.getenv('BUNNY_STREAM_LIBRARY_ID', ''),
+            'cdn_hostname': os.getenv('BUNNY_CDN_HOSTNAME', ''),
+            'storage_zone': os.getenv('BUNNY_STORAGE_ZONE', '')
+        }
+        logger.info(f"Using Bunny config from .env fallback (api_key length: {len(fallback_config['api_key'])})")
+        return fallback_config
     
     def create_clip(
         self,
