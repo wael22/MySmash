@@ -137,42 +137,9 @@ def logout():
             from ..video_system.recording import video_recorder
             from datetime import datetime
             
-            # Trouver tous les enregistrements actifs de cet utilisateur
-            active_recordings = RecordingSession.query.filter_by(
-                user_id=user_id,
-                status='active'
-            ).all()
-            
-            if active_recordings:
-                logger.info(f"🛑 Logout: {len(active_recordings)} enregistrement(s) actif(s) pour user {user_id}")
-                
-                for recording in active_recordings:
-                    try:
-                        # Arrêter l'enregistrement
-                        logger.info(f"   Arrêt enregistrement {recording.recording_id}")
-                        video_file_path = video_recorder.stop_recording(recording.recording_id)
-                        
-                        # Fermer la session
-                        session_manager.close_session(recording.recording_id)
-                        
-                        # Mettre à jour le statut
-                        recording.status = 'stopped'
-                        recording.end_time = datetime.utcnow()
-                        recording.stopped_by = 'logout'
-                        
-                        # Libérer le terrain
-                        if recording.court_id:
-                            court = Court.query.get(recording.court_id)
-                            if court:
-                                court.is_recording = False
-                                court.current_recording_id = None
-                        
-                        logger.info(f"   ✅ Enregistrement {recording.recording_id} arrêté (logout)")
-                        
-                    except Exception as e:
-                        logger.error(f"   ❌ Erreur arrêt enregistrement {recording.recording_id}: {e}")
-                
-                db.session.commit()
+            # Les enregistrements de terrain continuent même si le joueur se déconnecte
+            # Ils doivent être arrêtés manuellement par le club ou atteindre le temps max
+            logger.info(f"👤 Logout user {user_id} - enregistrements continuent")
         
         # Nettoyer la session
         session.clear()
