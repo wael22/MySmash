@@ -29,6 +29,7 @@ class ManualClipService:
             from src.models.system_configuration import SystemConfiguration
             config = SystemConfiguration.get_bunny_cdn_config()  # ✅ Correct method name
             if config and config.get('api_key'):
+                # L'API key peut ne pas être chiffrée, utiliser comme tel
                 return config
         except Exception as e:
             logger.warning(f"Could not load Bunny config from DB: {e}")
@@ -120,20 +121,15 @@ class ManualClipService:
             
             config = self._get_bunny_config()
             
-            # Utiliser l'URL de téléchargement MP4 via API (pas HLS public)
-            # Bunny Stream API permet le téléchargement avec API key
-            source_url = f"https://video.bunnycdn.com/play/{config['library_id']}/{video.bunny_video_id}"
-            
-            logger.info(f"Creating clip from Bunny Stream: {video.bunny_video_id}")
+            logger.info(f"Creating clip from Bunny video: {video.bunny_video_id}")
             logger.info(f"Cutting from {clip.start_time}s to {clip.end_time}s")
             
-            # Découper directement depuis l'URL avec API key
-            clip_path = self._cut_video_from_bunny_api(
-                video.bunny_video_id,
-                clip.start_time, 
-                clip.end_time,
-                config
-            )
+            # Télécharger la vidéo source via API (utilise méthode existante)
+            source_path = self._download_bunny_video(video.bunny_video_id)
+            
+            # Découper localement
+            duration = clip.end_time - clip.start_time
+            clip_path = self._cut_video_local(source_path, clip.start_time, clip.end_time)
             
             # Générer miniature
             logger.info("Generating thumbnail")
