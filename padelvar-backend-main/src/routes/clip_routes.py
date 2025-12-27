@@ -100,6 +100,106 @@ def create_clip(current_user):
         logger.error(f"Error creating clip: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@clip_bp.route('/upload-direct', methods=['POST'])
+@login_required
+def upload_direct_clip(current_user):
+    """
+    Upload MP4 clip directly depuis le frontend (FFmpeg.wasm)
+    
+    Form Data:
+        file: Fichier MP4 du clip
+        video_id: ID de la vidéo source
+        title: Titre du clip
+        description: Description (optionnel)
+        start_time: Timestamp début
+        end_time: Timestamp fin
+    """
+    try:
+        # Vérifier que le fichier est présent
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({'error': 'Empty filename'}), 400
+        
+        # Récupérer métadonnées
+        video_id = request.form.get('video_id', type=int)
+        title = request.form.get('title')
+        description = request.form.get('description')
+        start_time = request.form.get('start_time', type=float)
+        end_time = request.form.get('end_time', type=float)
+        
+        # Validation
+        if not all([video_id, title, start_time is not None, end_time is not None]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Vérifier que la vidéo existe et appartient à l'utilisateur
+        from src.models.user import Video
+        video = Video.query.get(video_id)
+        if not video:
+            return jsonify({'error': 'Video not found'}), 404
+        
+        if video.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Créer le clip en DB (status pending)
+        clip = manual_clip_service.create_clip(
+            video_id=video_id,
+            user_id=current_user.id,
+            start_time=start_time,
+            end_time=end_time,
+            title=title,
+            description=description
+        )
+        
+        logger.info(f"Uploading direct clip {clip.id} to Bunny")
+        
+        # Sauvegarder temporairement le fichier
+        import tempfile
+        import os
+        from datetime import datetime
+        
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, f"clip_upload_{datetime.now().timestamp()}.mp4")
+        file.save(temp_path)
+        
+        # Upload vers Bunny via le service existant
+        clip_url, bunny_video_id = manual_clip_service._upload_to_bunny(
+            temp_path,
+            f"clip_{clip.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+        )
+        
+        # Mettre à jour le clip
+        clip.file_url = clip_url
+        clip.bunny_video_id = bunny_video_id
+        clip.status = 'completed'
+        clip.completed_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Nettoyer fichier temp
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        logger.info(f"Clip {clip.id} uploaded successfully")
+        
+        return jsonify({
+            'success': True,
+            'clip': clip.to_dict(),
+            'message': 'Clip uploaded successfully'
+        }), 201
+        
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error uploading clip: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Internal server error'}), 500
+
 @clip_bp.route('/<int:clip_id>', methods=['GET'])
 @login_required
 def get_clip(current_user, clip_id):
