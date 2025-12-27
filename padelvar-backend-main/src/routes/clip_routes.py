@@ -181,7 +181,7 @@ def upload_direct_clip(current_user):
         # Créer une notification pour informer l'utilisateur
         Notification.create_notification(
             user_id=current_user.id,
-            notification_type=NotificationType.VIDEO.value,
+            notification_type="VIDEO",  # Uppercase pour matcher l'enum DB
             title="🎬 Votre clip est prêt !",
             message=f"Le clip '{clip.title}' a été créé avec succès et est maintenant disponible.",
             link=f"/dashboard?tab=clips"
