@@ -136,16 +136,13 @@ def upload_direct_clip(current_user):
         if not all([video_id, title, start_time is not None, end_time is not None]):
             return jsonify({'error': 'Missing required fields'}), 400
         
-        # Vérifier que la vidéo existe et appartient à l'utilisateur
+        # Vérifier que la vidéo existe
         from src.models.user import Video
         video = Video.query.get(video_id)
         if not video:
             return jsonify({'error': 'Video not found'}), 404
         
-        # Autoriser si vidéo appartient à l'utilisateur OU si même club (via court)
-        video_club_id = video.court.club_id if video.court else None
-        if video.user_id != current_user.id and video_club_id != current_user.club_id:
-            return jsonify({'error': 'Unauthorized - not your video or club'}), 403
+        # Pas de restriction - tous les joueurs peuvent créer des clips
         
         # Créer le clip en DB (status pending)
         clip = manual_clip_service.create_clip(
