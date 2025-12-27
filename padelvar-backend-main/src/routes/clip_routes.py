@@ -5,6 +5,7 @@ Routes API pour la gestion des clips vidéo manuels
 from flask import Blueprint, request, jsonify, session
 from src.models.database import db
 from src.models.user import UserClip, Video, User
+from src.models.notification import Notification, NotificationType
 from src.services.manual_clip_service import manual_clip_service
 from src.services.social_share_service import social_share_service
 from functools import wraps
@@ -176,6 +177,16 @@ def upload_direct_clip(current_user):
         clip.bunny_video_id = bunny_video_id
         clip.status = 'completed'
         clip.completed_at = datetime.utcnow()
+        
+        # Créer une notification pour informer l'utilisateur
+        Notification.create_notification(
+            user_id=current_user.id,
+            notification_type=NotificationType.VIDEO.value,
+            title="🎬 Votre clip est prêt !",
+            message=f"Le clip '{clip.title}' a été créé avec succès et est maintenant disponible.",
+            link=f"/dashboard?tab=clips"
+        )
+        
         db.session.commit()
         
         # Nettoyer fichier temp
