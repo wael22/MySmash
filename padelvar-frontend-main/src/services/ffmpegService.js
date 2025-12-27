@@ -1,0 +1,129 @@
+// FFmpeg.wasm service for client-side video processing
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile, toBlobURL } from '@ffmpeg/util';
+
+class FFmpegService {
+    constructor() {
+        this.ffmpeg = null;
+        this.loaded = false;
+        this.loading = false;
+    }
+
+    /**
+     * Load FFmpeg.wasm (heavy ~25MB)
+     * @param {Function} onProgress - Callback (progress: 0-1)
+     */
+    async load(onProgress = null) {
+        if (this.loaded) return;
+        if (this.loading) {
+            // Wait for current loading to complete
+            while (this.loading) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return;
+        }
+
+        try {
+            this.loading = true;
+            this.ffmpeg = new FFmpeg();
+
+            // Setup progress logging
+            this.ffmpeg.on('log', ({ message }) => {
+                console.log('[FFmpeg]', message);
+            });
+
+            // Load core + wasm
+            const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+
+            await this.ffmpeg.load({
+                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+            });
+
+            this.loaded = true;
+            this.loading = false;
+            console.log('[FFmpeg] Loaded successfully');
+
+            if (onProgress) onProgress(1);
+        } catch (error) {
+            this.loading = false;
+            console.error('[FFmpeg] Load failed:', error);
+            throw new Error('Failed to load FFmpeg: ' + error.message);
+        }
+    }
+
+    /**
+     * Cut video segment
+     * @param {Blob} videoBlob - Input video
+     * @param {number} start - Start time (seconds)
+     * @param {number} end - End time (seconds)
+     * @param {Function} onProgress - Progress callback
+     * @returns {Promise<Blob>} - Output clip
+     */
+    async cutVideo(videoBlob, start, end, onProgress = null) {
+        if (!this.loaded) {
+            throw new Error('FFmpeg not loaded. Call load() first.');
+        }
+
+        try {
+            const inputName = 'input.mp4';
+            const outputName = 'output.mp4';
+            const duration = end - start;
+
+            // Write input to FFmpeg virtual FS
+            await this.ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
+
+            // Progress tracking
+            if (onProgress) {
+                this.ffmpeg.on('progress', ({ progress }) => {
+                    onProgress(progress);
+                });
+            }
+
+            // Run FFmpeg command
+            await this.ffmpeg.exec([
+                '-ss', start.toString(),
+                '-i', inputName,
+                '-t', duration.toString(),
+                '-c', 'copy', // Fast copy, no re-encode
+                '-avoid_negative_ts', 'make_zero',
+                outputName
+            ]);
+
+            // Read output
+            const data = await this.ffmpeg.readFile(outputName);
+
+            // Cleanup
+            await this.ffmpeg.deleteFile(inputName);
+            await this.ffmpeg.deleteFile(outputName);
+
+            // Convert to Blob
+            return new Blob([data.buffer], { type: 'video/mp4' });
+
+        } catch (error) {
+            console.error('[FFmpeg] Cut failed:', error);
+            throw new Error('Video cutting failed: ' + error.message);
+        }
+    }
+
+    /**
+     * Check if FFmpeg is loaded
+     */
+    isLoaded() {
+        return this.loaded;
+    }
+
+    /**
+     * Cleanup FFmpeg instance
+     */
+    terminate() {
+        if (this.ffmpeg) {
+            this.ffmpeg.terminate();
+            this.ffmpeg = null;
+            this.loaded = false;
+        }
+    }
+}
+
+// Singleton instance
+export const ffmpegService = new FFmpegService();
