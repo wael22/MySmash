@@ -5,10 +5,20 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
+  plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
-    host: true
+    host: true,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    }
+  },
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
+  },
+  worker: {
+    format: 'es'
   },
   resolve: {
     alias: {
@@ -16,3 +26,4 @@ export default defineConfig({
     },
   },
 })
+
