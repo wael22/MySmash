@@ -1785,6 +1785,21 @@ def stop_court_recording(court_id):
                 
                 if upload_id:
                     logger.info(f"✅ Upload Bunny programmé avec ID: {upload_id}")
+                    
+                    # ✨ CORRECTION: Wait for upload and update bunny_video_id + file_url
+                    import time
+                    time.sleep(3)  # Give queue time to process
+                    
+                    upload_status = bunny_storage_service.get_upload_status(upload_id)
+                    if upload_status and upload_status.get('bunny_video_id'):
+                        bunny_id = upload_status['bunny_video_id']
+                        new_video.bunny_video_id = bunny_id
+                        new_video.file_url = f"https://vz-f2c97d0e-5d4.b-cdn.net/{bunny_id}/play.mp4"
+                        db.session.commit()
+                        logger.info(f"✅ Bunny video ID saved: {new_video.bunny_video_id}")
+                        logger.info(f"✅ Bunny URL updated: {new_video.file_url}")
+                    else:
+                        logger.warning(f"⚠️ Upload status: {upload_status}")
                 else:
                     logger.warning(f"⚠️ Échec programmation upload Bunny")
                     
