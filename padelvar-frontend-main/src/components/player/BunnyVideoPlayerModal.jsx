@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import Hls from 'hls.js';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,8 @@ import { X, Scissors } from 'lucide-react';
 import VideoClipEditor from './VideoClipEditor';
 
 export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
-  const iframeRef = useRef(null);
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null); // To store the HLS.js instance
   const [clipEditorOpen, setClipEditorOpen] = useState(false);
 
   // Debug des données vidéo reçues
@@ -21,15 +23,6 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
       console.log('🎬 URL principale:', video.url);
     }
   }, [isOpen, video]);
-
-  // Nettoyer l'iframe lors de la fermeture
-  useEffect(() => {
-    if (!isOpen && iframeRef.current) {
-      iframeRef.current.src = 'about:blank';
-    }
-  }, [isOpen]);
-
-  if (!video) return null;
 
   // Extraire le bunny_video_id de différentes sources
   const getBunnyVideoId = () => {
@@ -61,6 +54,59 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
     return null;
   };
 
+  // Init HLS player when video opens
+  useEffect(() => {
+    if (!isOpen || !video || !videoRef.current) {
+      // Cleanup HLS when closing
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      return;
+    }
+
+    const bunnyVideoId = getBunnyVideoId();
+    if (!bunnyVideoId) return;
+
+    // Construct m3u8 URL
+    const hlsUrl = `https://vz-f2c97d0e-5d4.b-cdn.net/${bunnyVideoId}/playlist.m3u8`;
+    console.log('🎬 Loading HLS URL:', hlsUrl);
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        debug: false,
+        enableWorker: true,
+        lowLatencyMode: false,
+      });
+
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(videoRef.current);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('✅ HLS stream loaded successfully');
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        console.error('❌ HLS Error:', data);
+      });
+
+      hlsRef.current = hls;
+    } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS support (Safari)
+      videoRef.current.src = hlsUrl;
+      console.log('✅ Using native HLS support');
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [isOpen, video]);
+
+  if (!video) return null;
+
   const bunnyVideoId = getBunnyVideoId();
   console.log('🎬 Bunny Video ID extrait:', bunnyVideoId);
 
@@ -86,12 +132,27 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
           </DialogHeader>
 
           <div className="flex-1 flex items-center justify-center bg-gray-100 rounded-lg">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">Vidéo non disponible</h3>
-              <p className="text-gray-600">
-                Cette vidéo n'est pas encore prête ou n'est plus disponible.
+            <div className="text-center p-8">
+              <div className="mb-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Vidéo en cours de traitement</h3>
+              <p className="text-gray-600 mb-4">
+                Cette vidéo est en cours d'upload ou d'encodage sur Bunny CDN.
               </p>
-
+              <p className="text-sm text-gray-500">
+                Patientez quelques minutes et rafraîchissez la page.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Rafraîchir
+              </button>
             </div>
           </div>
         </DialogContent>
@@ -136,20 +197,12 @@ export default function BunnyVideoPlayerModal({ isOpen, onClose, video }) {
         </DialogHeader>
 
         <div className="bg-black overflow-hidden flex-1" style={{ height: 'calc(95vh - 60px)' }}>
-          <iframe
-            ref={iframeRef}
-            src={bunnyPlayerUrl}
+          <video
+            ref={videoRef}
             className="w-full h-full"
-            frameBorder="0"
-            allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            title={video.title || "Bunny Stream Player"}
-            onLoad={() => {
-              console.log('🎬 Lecteur Bunny Stream chargé avec succès');
-            }}
-            onError={(e) => {
-              console.error('[ERROR] Erreur lors du chargement du lecteur Bunny:', e);
-            }}
+            controls
+            playsInline
+            style={{ objectFit: 'contain' }}
           />
         </div>
       </DialogContent>
