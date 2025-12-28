@@ -398,9 +398,13 @@ def _stop_recording_session(recording_session, stopped_by, performed_by_id):
                 
                 upload_status = bunny_storage_service.get_upload_status(upload_id)
                 if upload_status and upload_status.get('bunny_video_id'):
-                    video.bunny_video_id = upload_status['bunny_video_id']
+                    bunny_id = upload_status['bunny_video_id']
+                    video.bunny_video_id = bunny_id
+                    # ✅ CORRECTION: Mettre à jour file_url avec l'URL Bunny CDN complète
+                    video.file_url = f"https://vz-f2c97d0e-5d4.b-cdn.net/{bunny_id}/play.mp4"
                     db.session.commit()
                     logger.info(f"✅ Bunny video ID saved: {video.bunny_video_id}")
+                    logger.info(f"✅ Bunny URL updated: {video.file_url}")
                 else:
                     logger.warning(f"⚠️ Upload status: {upload_status}")
             else:
