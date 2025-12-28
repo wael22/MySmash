@@ -134,13 +134,9 @@ def start_recording_with_duration():
                 'existing_recording': existing_session.to_dict()
             }), 409
         
-        # Convertir la durée en minutes
-        if duration == 'MAX':
-            planned_duration = 200
-        else:
-            planned_duration = int(duration)
-            if planned_duration not in [60, 90, 120, 200]:
-                return jsonify({'error': 'Durée invalide. Utilisez 60, 90, 120 ou MAX'}), 400
+        # DURÉE MAX FORCÉE À 60 MINUTES pour correspondre au -t 3600 de FFmpeg
+        # Peu importe ce que l'utilisateur demande, on limite à 60min
+        planned_duration = 60  # Force 60 minutes maximum
         
         # Générer un ID unique pour l'enregistrement
         recording_id = f"rec_{user.id}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
