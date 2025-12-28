@@ -666,16 +666,12 @@ def start_recording_v3():
         
         data = request.get_json()
         court_id = data.get('court_id')
-        duration_str = data.get('duration', 'MAX')  # Frontend envoie "60", "90", "120" ou "MAX"
+        # Frontend envoie 'duration_minutes' (int) : 60, 90, 120, ou 200
+        duration_minutes = data.get('duration_minutes')
         
-        # Convertir la durée en minutes
-        if duration_str == 'MAX':
-            duration_minutes = 200  # 200 minutes max
-        else:
-            try:
-                duration_minutes = int(duration_str)
-            except (ValueError, TypeError):
-                return jsonify({'error': 'Durée invalide'}), 400
+        # Valider la durée
+        if not duration_minutes or duration_minutes not in [60, 90, 120, 200]:
+            return jsonify({'error': 'Durée invalide. Utilisez 60, 90, 120 ou 200 minutes'}), 400
         
         if not court_id:
             return jsonify({'error': 'court_id requis'}), 400
