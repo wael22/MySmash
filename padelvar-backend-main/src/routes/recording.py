@@ -134,9 +134,13 @@ def start_recording_with_duration():
                 'existing_recording': existing_session.to_dict()
             }), 409
         
-        # DURÉE MAX FORCÉE À 60 MINUTES pour correspondre au -t 3600 de FFmpeg
-        # Peu importe ce que l'utilisateur demande, on limite à 60min
-        planned_duration = 60  # Force 60 minutes maximum
+        # Convertir la durée en minutes et la valider
+        if duration == 'MAX':
+            planned_duration = 200  # 200 minutes max
+        else:
+            planned_duration = int(duration)
+            if planned_duration not in [60, 90, 120, 200]:
+                return jsonify({'error': 'Durée invalide. Utilisez 60, 90, 120 ou MAX (200)'}), 400
         
         # Générer un ID unique pour l'enregistrement
         recording_id = f"rec_{user.id}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
@@ -662,7 +666,16 @@ def start_recording_v3():
         
         data = request.get_json()
         court_id = data.get('court_id')
-        duration_minutes = data.get('duration_minutes', 90)
+        duration_str = data.get('duration', 'MAX')  # Frontend envoie "60", "90", "120" ou "MAX"
+        
+        # Convertir la durée en minutes
+        if duration_str == 'MAX':
+            duration_minutes = 200  # 200 minutes max
+        else:
+            try:
+                duration_minutes = int(duration_str)
+            except (ValueError, TypeError):
+                return jsonify({'error': 'Durée invalide'}), 400
         
         if not court_id:
             return jsonify({'error': 'court_id requis'}), 400
@@ -675,7 +688,7 @@ def start_recording_v3():
         if not court.camera_url:
             return jsonify({'error': f'Caméra non configurée pour le terrain {court_id}'}), 400
         
-        logger.info(f"🎬 V3 Adapter: Nouvelle demande d'enregistrement - Terrain {court_id}")
+        logger.info(f"🎬 V3 Adapter: Nouvelle demande d'enregistrement - Terrain {court_id}, Durée: {duration_minutes} min")
         
         # 💳 VÉRIFIER LES CRÉDITS AVANT DE DÉMARRER
         if user.credits_balance < 1:
@@ -700,11 +713,11 @@ def start_recording_v3():
                 'error': f'Erreur création session: {str(e)}'
             }), 500
         
-        # 2. Démarrer enregistrement
+        # 2. Démarrer enregistrement avec la durée en secondes
         try:
             success = video_recorder.start_recording(
                 session=session,
-                duration_seconds=duration_minutes * 60
+                duration_seconds=duration_minutes * 60  # Convertir minutes → secondes pour FFmpeg
             )
             
             if not success:
