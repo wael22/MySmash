@@ -21,6 +21,7 @@ export const TutorialProvider = ({ children }) => {
     console.log('[TUTORIAL] User from useAuth:', user);
     const [isActive, setIsActive] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
+    const [currentSubstep, setCurrentSubstep] = useState(0);  // Pour naviguer dans les substeps
     const [completed, setCompleted] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -81,6 +82,20 @@ export const TutorialProvider = ({ children }) => {
     };
 
     const nextStep = async () => {
+        const currentStepInfo = getCurrentStepData();
+        const hasSubsteps = currentStepInfo?.substeps && currentStepInfo.substeps.length > 0;
+
+        // Si on a des substeps et qu'on n'est pas au dernier
+        if (hasSubsteps && currentSubstep < currentStepInfo.substeps.length - 1) {
+            // Passer au substep suivant
+            setCurrentSubstep(currentSubstep + 1);
+            console.log('[TUTORIAL] Moving to substep', currentSubstep + 1);
+            return;
+        }
+
+        // Sinon, passer à l'étape suivante
+        setCurrentSubstep(0);  // Reset substep
+
         if (currentStep < TOTAL_TUTORIAL_STEPS) {
             const nextStepNumber = currentStep + 1;
             try {
@@ -98,11 +113,26 @@ export const TutorialProvider = ({ children }) => {
     };
 
     const previousStep = async () => {
+        // Si on est sur un substep, revenir au substep précédent
+        if (currentSubstep > 0) {
+            setCurrentSubstep(currentSubstep - 1);
+            console.log('[TUTORIAL] Moving back to substep', currentSubstep - 1);
+            return;
+        }
+
+        // Sinon, revenir à l'étape précédente
         if (currentStep > 1) {
             const prevStepNumber = currentStep - 1;
             try {
                 await tutorialService.updateStep(prevStepNumber);
                 setCurrentStep(prevStepNumber);
+                // Réinitialiser au dernier substep de l'étape précédente si elle en a
+                const prevStepInfo = tutorialSteps.find(s => s.id === prevStepNumber);
+                if (prevStepInfo?.substeps && prevStepInfo.substeps.length > 0) {
+                    setCurrentSubstep(prevStepInfo.substeps.length - 1);
+                } else {
+                    setCurrentSubstep(0);
+                }
             } catch (error) {
                 console.error('Error updating tutorial step:', error);
                 setCurrentStep(prevStepNumber);
@@ -142,13 +172,25 @@ export const TutorialProvider = ({ children }) => {
         return tutorialSteps.find(step => step.id === currentStep) || tutorialSteps[0];
     };
 
+    const getCurrentSubstepData = () => {
+        const stepData = getCurrentStepData();
+        if (stepData?.substeps && stepData.substeps.length > 0) {
+            return stepData.substeps[currentSubstep] || null;
+        }
+        return null;
+    };
+
     const value = {
         isActive,
         currentStep,
+        currentSubstep,
         totalSteps: TOTAL_TUTORIAL_STEPS,
         completed,
         loading,
         currentStepData: getCurrentStepData(),
+        currentSubstepData: getCurrentSubstepData(),
+        hasSubsteps: getCurrentStepData()?.substeps?.length > 0,
+        totalSubsteps: getCurrentStepData()?.substeps?.length || 0,
         startTutorial,
         nextStep,
         previousStep,

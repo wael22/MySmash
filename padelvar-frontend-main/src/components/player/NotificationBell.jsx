@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';  // ✅ Add navigation
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import {
 import { notificationService } from '@/lib/api';
 
 const NotificationBell = () => {
+    const navigate = useNavigate();  // ✅ Add hook
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -48,9 +50,18 @@ const NotificationBell = () => {
         if (!notification.is_read) {
             handleMarkAsRead(notification.id);
         }
-        // Navigate to link if exists
+        // ✅ Validation du lien avant navigation
         if (notification.link) {
-            window.location.href = notification.link;
+            try {
+                const validPaths = ['/dashboard', '/my-clips', '/profile'];
+                if (validPaths.some(path => notification.link.startsWith(path))) {
+                    navigate(notification.link);
+                } else {
+                    console.warn('Invalid notification link:', notification.link);
+                }
+            } catch (error) {
+                console.error('Navigation error:', error);
+            }
         }
     };
 

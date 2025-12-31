@@ -11,6 +11,7 @@ import ProfilePage from './pages/ProfilePage';
 import MyClipsPage from './pages/MyClipsPage';  // 🆕 Page des clips
 import VerifyEmail from './components/auth/VerifyEmail';  // 🆕 Page de vérification d'email
 import GoogleAuthCallback from './components/GoogleAuthCallback';
+import { TutorialProvider } from './contexts/TutorialContext';  // ✅ Tutorial Provider
 // Importation dynamique des pages pour éviter les erreurs de chargement
 import { Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -54,7 +55,9 @@ function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute requiredRole="player">
-                  <PlayerDashboard />
+                  <TutorialProvider>
+                    <PlayerDashboard />
+                  </TutorialProvider>
                 </ProtectedRoute>
               }
             />

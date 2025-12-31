@@ -336,7 +336,7 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted, initialQR
             <div className="space-y-2">
               <Label htmlFor="title">Titre du match</Label>
               <Input
-                id="title"
+                id="recording-name-input"
                 placeholder="Ex: Match contre équipe X"
                 value={recordingData.title}
                 onChange={(e) => setRecordingData(prev => ({ ...prev, title: e.target.value }))}
@@ -362,7 +362,7 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted, initialQR
               <h3 className="text-base font-semibold text-gray-900">Durée d'enregistrement</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div id="duration-select" className="grid grid-cols-2 gap-3">
               {durationOptions.map((option) => (
                 <button
                   key={option.value}
@@ -454,6 +454,7 @@ const AdvancedRecordingModal = ({ isOpen, onClose, onRecordingStarted, initialQR
                 required
               />
               <Button
+                id="qr-scanner-button"
                 type="button"
                 variant="outline"
                 size="icon"

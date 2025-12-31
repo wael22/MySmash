@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationService } from '@/lib/api';
+import { useTutorial } from '@/contexts/TutorialContext';  // ✅ Tutorial context
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Bell, CheckCircle, Coins, MessageSquare, Video, Info, Loader2 } from 'lucide-react';
+import { Bell, CheckCircle, Coins, MessageSquare, Video, Info, Loader2, GraduationCap, Play } from 'lucide-react';
 
 const NotificationsTab = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const { resetTutorial, completed } = useTutorial();  // ✅ Tutorial context
 
     useEffect(() => {
         loadNotifications();
@@ -117,6 +119,37 @@ const NotificationsTab = () => {
                 )}
             </div>
 
+            {/* 🎉 Carte de Bienvenue avec Tutoriel */}
+            <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0">
+                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                                <GraduationCap className="h-6 w-6 text-white" />
+                            </div>
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">
+                                🎾 Bienvenue sur MySmash !
+                            </h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                {completed
+                                    ? "Vous avez terminé le tutoriel ! Besoin d'un rappel ? Relancez-le à tout moment pour revoir les fonctionnalités."
+                                    : "Découvrez toutes les fonctionnalités de MySmash avec notre tutoriel interactif. Apprenez à enregistrer vos matchs, créer des clips et partager vos performances !"
+                                }
+                            </p>
+                            <Button
+                                onClick={() => resetTutorial()}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                <Play className="h-4 w-4 mr-2" />
+                                {completed ? "Relancer le tutoriel" : "Commencer le tutoriel"}
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             {notifications.length === 0 ? (
                 <Card>
                     <CardContent className="py-12 text-center">
@@ -152,22 +185,6 @@ const NotificationsTab = () => {
                                             </div>
                                         </div>
                                         <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                                        {notification.link && (
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                className="p-0 h-auto mt-2 text-blue-600"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (!notification.is_read) {
-                                                        handleMarkAsRead(notification.id);
-                                                    }
-                                                    navigate(notification.link);
-                                                }}
-                                            >
-                                                Voir plus →
-                                            </Button>
-                                        )}
                                     </div>
                                 </div>
                             </CardContent>

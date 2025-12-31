@@ -1,12 +1,18 @@
 // src/components/tutorial/TutorialTooltip.jsx
 
 import { useEffect, useState, useRef } from 'react';
+import { useTutorial } from '../../contexts/TutorialContext';
 import './Tutorial.css';
 
 const TutorialTooltip = ({ step, onNext, onPrevious, onSkip, currentStepNumber, totalSteps }) => {
+    const { currentSubstep, currentSubstepData, hasSubsteps, totalSubsteps } = useTutorial();
     const tooltipRef = useRef(null);
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const [tooltipPosition, setTooltipPosition] = useState(step.position || 'bottom');
+
+    // Utiliser le substep actuel si disponible, sinon l'étape principale
+    const displayStep = currentSubstepData || step;
+    const displayTargetSelector = currentSubstepData?.targetSelector || step.targetSelector;
 
     useEffect(() => {
         calculatePosition();
@@ -17,15 +23,15 @@ const TutorialTooltip = ({ step, onNext, onPrevious, onSkip, currentStepNumber, 
             window.removeEventListener('resize', calculatePosition);
             window.removeEventListener('scroll', calculatePosition);
         };
-    }, [step.targetSelector]);
+    }, [displayTargetSelector]);
 
     const calculatePosition = () => {
-        if (step.position === 'center' || !step.targetSelector) {
+        if (displayStep.position === 'center' || !displayTargetSelector) {
             setTooltipPosition('center');
             return;
         }
 
-        const targetElement = document.querySelector(step.targetSelector);
+        const targetElement = document.querySelector(displayTargetSelector);
         if (!targetElement || !tooltipRef.current) {
             setTooltipPosition('center');
             return;
@@ -33,13 +39,13 @@ const TutorialTooltip = ({ step, onNext, onPrevious, onSkip, currentStepNumber, 
 
         const targetRect = targetElement.getBoundingClientRect();
         const tooltipRect = tooltipRef.current.getBoundingClientRect();
-        const padding = 20;
+        const padding = 40; // ✅ Augmenté pour plus d'espace
 
         let top = 0;
         let left = 0;
-        let finalPosition = step.position;
+        let finalPosition = displayStep.position;
 
-        switch (step.position) {
+        switch (displayStep.position) {
             case 'top':
                 top = targetRect.top - tooltipRect.height - padding;
                 left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
@@ -59,6 +65,12 @@ const TutorialTooltip = ({ step, onNext, onPrevious, onSkip, currentStepNumber, 
             case 'bottom-left':
                 top = targetRect.bottom + padding;
                 left = targetRect.left;
+                finalPosition = 'bottom-left';
+                break;
+            case 'bottom-right':
+                top = targetRect.bottom + padding;
+                left = targetRect.right - tooltipRect.width;
+                finalPosition = 'bottom-right';
                 break;
             default:
                 top = targetRect.bottom + padding;
@@ -98,6 +110,11 @@ const TutorialTooltip = ({ step, onNext, onPrevious, onSkip, currentStepNumber, 
                 <div className="tutorial-progress">
                     <div className="tutorial-progress-text">
                         Étape {currentStepNumber} sur {totalSteps}
+                        {hasSubsteps && (
+                            <span style={{ marginLeft: '8px', fontSize: '0.9em', opacity: 0.8 }}>
+                                ({currentSubstep + 1}/{totalSubsteps})
+                            </span>
+                        )}
                     </div>
                     <div className="tutorial-progress-bar">
                         <div
@@ -110,11 +127,11 @@ const TutorialTooltip = ({ step, onNext, onPrevious, onSkip, currentStepNumber, 
 
             {/* Header */}
             <div className="tutorial-header">
-                <div className="tutorial-title">{step.title}</div>
+                <div className="tutorial-title">{displayStep.title}</div>
             </div>
 
             {/* Description */}
-            <p className="tutorial-description">{step.description}</p>
+            <p className="tutorial-description">{displayStep.description}</p>
 
             {/* Buttons */}
             <div className="tutorial-buttons">

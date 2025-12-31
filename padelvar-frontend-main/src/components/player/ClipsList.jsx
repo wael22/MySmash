@@ -22,6 +22,7 @@ import SocialShareModal from './SocialShareModal';
 import BunnyVideoPlayerModal from './BunnyVideoPlayerModal';
 
 const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
+    const { mergeData, shouldShowDummy } = useTutorialDemo();
     const [clips, setClips] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -176,7 +177,7 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
         );
     }
 
-    if (clips.length === 0) {
+    if (clips.length === 0 && !shouldShowDummy(clips)) {
         return (
             <div className="text-center py-12">
                 <p className="text-gray-500">Aucun clip créé pour le moment</p>
@@ -184,10 +185,12 @@ const ClipsList = ({ videoId = null, onRefresh = () => { } }) => {
         );
     }
 
+    const displayClips = mergeData(clips);
+
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {clips.map((clip) => (
+                {displayClips.map((clip) => (
                     <Card key={clip.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                         {/* Miniature */}
                         <div className="relative aspect-video bg-gray-200">

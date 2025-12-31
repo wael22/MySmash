@@ -87,6 +87,14 @@ const VideoCardModern = ({
                     </div>
                 )}
 
+                {/* Badge "Tutorial" */}
+                {video.is_tutorial_dummy && (
+                    <div className="absolute top-2 left-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                        <span>📚</span>
+                        <span>Exemple</span>
+                    </div>
+                )}
+
                 {/* Durée */}
                 {video.duration && (
                     <div className="image-overlay-duration">
