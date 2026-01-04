@@ -275,12 +275,18 @@ def get_my_active_recording():
         ).first()
         
         if active_session:
+            # Get court and club names
+            court = Court.query.get(active_session.court_id)
+            club = Club.query.get(active_session.club_id)
+            
             recording_data = {
                 'recording_id': active_session.recording_id,
                 'id': active_session.id,
                 'user_id': active_session.user_id,
                 'court_id': active_session.court_id,
+                'court_name': court.name if court else "Court",
                 'club_id': active_session.club_id,
+                'club_name': club.name if club else "Club",
                 'planned_duration': active_session.planned_duration,
                 'start_time': active_session.start_time.isoformat() if active_session.start_time else None,
                 'title': active_session.title,

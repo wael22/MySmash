@@ -74,6 +74,11 @@ def create_app(config_name=None):
     # Charger la configuration
     app.config.from_object(config[config_name])
     
+    # Configuration UTF-8 pour JSON
+    app.config['JSON_AS_ASCII'] = False
+    app.config['JSON_SORT_KEYS'] = False
+    app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
+    
     # S'assurer que le dossier instance existe
     try:
         os.makedirs(app.instance_path, exist_ok=True)

@@ -9,6 +9,10 @@ from src.models.notification import (
 )
 from src.models.user import User, UserRole
 import logging
+import os
+import json
+from werkzeug.utils import secure_filename
+import uuid
 
 support_bp = Blueprint('support', __name__)
 logger = logging.getLogger(__name__)
@@ -39,17 +43,23 @@ def require_admin():
 
 @support_bp.route('/messages', methods=['POST'])
 def create_support_message():
-    """Créer un nouveau message support"""
+    """Créer un nouveau message support avec images optionnelles"""
     user_id = require_auth()
     if not user_id:
         return jsonify({"error": "Non authentifié"}), 401
     
     try:
-        data = request.get_json()
+        # Debug: log all received data
+        logger.info(f"[SUPPORT DEBUG] Content-Type: {request.content_type}")
+        logger.info(f"[SUPPORT DEBUG] Form data: {dict(request.form)}")
+        logger.info(f"[SUPPORT DEBUG] Files: {list(request.files.keys())}")
         
-        subject = data.get('subject')
-        message = data.get('message')
-        priority = data.get('priority', 'medium')
+        # Récupérer les données du formulaire
+        subject = request.form.get('subject')
+        message = request.form.get('message')
+        priority = request.form.get('priority', 'medium')
+        
+        logger.info(f"[SUPPORT DEBUG] subject={subject}, message={message}, priority={priority}")
         
         if not subject or not message:
             return jsonify({"error": "Sujet et message requis"}), 400
@@ -60,12 +70,50 @@ def create_support_message():
         except KeyError:
             priority_enum = SupportMessagePriority.MEDIUM
         
-        support_message = SupportMessage.create_message(
+        # Gérer les images uploadées
+        image_urls = []
+        if 'images' in request.files:
+            files = request.files.getlist('images')
+            
+            # Créer le dossier uploads s'il n'existe pas
+            upload_folder = os.path.join('uploads', 'support')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            for file in files:
+                if file and file.filename:
+                    # Sécuriser le nom de fichier
+                    filename = secure_filename(file.filename)
+                    # Générer un nom unique
+                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    filepath = os.path.join(upload_folder, unique_filename)
+                    
+                    # Sauvegarder le fichier
+                    file.save(filepath)
+                    
+                    # Stocker l'URL relative
+                    image_url = f"/uploads/support/{unique_filename}"
+                    image_urls.append(image_url)
+        
+        # Créer le message support
+        support_message = SupportMessage(
             user_id=user_id,
             subject=subject,
             message=message,
-            priority=priority_enum
+            priority=priority_enum,
+            images=json.dumps(image_urls) if image_urls else None
         )
+        
+        db.session.add(support_message)
+        db.session.commit()
+        
+        # Créer une notification
+        Notification.create_notification(
+            user_id=user_id,
+            notification_type=NotificationType.SUPPORT,
+            title="Message envoyé au support",
+            message=f"Votre message '{subject}' a été envoyé au support."
+        )
+        db.session.commit()
         
         return jsonify({
             "message": "Message envoyé au support",

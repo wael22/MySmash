@@ -12,8 +12,8 @@ class MJPEGRecorderConfig:
     mjpeg_url: str = "http://63.142.190.238:6120/mjpg/video.mjpg"
     
     # Configuration Bunny Stream
-    bunny_api_key: str = "dea74bd3-cb95-40f6-8b25e0cb6901-c108-4bf1"
-    library_id: str = "475694"
+    bunny_api_key: str = "1e962f55-b5f8-49e4-a11ee33c4216-2035-4b81"  # CORRECTED
+    library_id: str = "573234"  # Updated
     base_url: str = "https://video.bunnycdn.com"
     upload_timeout: int = 300  # 5 minutes
     

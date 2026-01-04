@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from src.models.database import db
 from sqlalchemy import Enum
+import json
 
 class NotificationType(PyEnum):
     """Types de notifications"""
@@ -118,6 +119,7 @@ class SupportMessage(db.Model):
     priority = db.Column(Enum(SupportMessagePriority), nullable=False, default=SupportMessagePriority.MEDIUM)
     admin_response = db.Column(db.Text, nullable=True)
     responded_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    images = db.Column(db.Text, nullable=True)  # JSON array of image URLs
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -136,6 +138,7 @@ class SupportMessage(db.Model):
             'priority': self.priority.value,
             'admin_response': self.admin_response,
             'responded_by': self.responded_by,
+            'images': json.loads(self.images) if self.images else [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
