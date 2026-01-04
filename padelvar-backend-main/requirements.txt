@@ -42,3 +42,6 @@ google-auth-httplib2>=0.1.1
 # Tests (optionnel)
 # pytest>=7.4.0
 # pytest-flask>=1.2.0
+
+# Production server
+gunicorn>=21.2.0
