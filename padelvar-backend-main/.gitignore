@@ -87,3 +87,6 @@ static/thumbnails/
 # Temporary files
 api_response.txt
 *.tmp
+
+# Secrets (ne jamais commiter!)
+.secrets.txt
